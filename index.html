@@ -1297,10 +1297,19 @@ async function save(key) {
   // Try up to 3 times with delay
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
+      // Deduplicate by id — Supabase throws "ON CONFLICT affect row a second time"
+      // if the same id appears more than once in a single upsert batch
+      const seen = new Set();
+      const deduped = items.filter(row => {
+        const k = String(row.id);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
       // Upsert in chunks of 400
       const CHUNK = 400;
-      for (let i = 0; i < items.length; i += CHUNK) {
-        const chunk = items.slice(i, i + CHUNK);
+      for (let i = 0; i < deduped.length; i += CHUNK) {
+        const chunk = deduped.slice(i, i + CHUNK);
         const { error } = await _db.from(table).upsert(chunk, { onConflict: 'id' });
         if (error) throw new Error(error.message);
       }
@@ -2636,14 +2645,14 @@ async function savePayment() {
     invNos.push(inv?.invNo || '—');
     // Push actual payment entry FIRST (before Cash Discount) so method display is correct
     if (alloc.adj > 0) {
-      DB.payments.push({ id: Date.now() + Math.random(), groupId, customerId, invoiceId: alloc.invId, amount: alloc.adj, date, method, ref, notes, cashDisc: alloc.disc, totalReceived });
+      DB.payments.push({ id: Date.now() * 1000 + Math.floor(Math.random() * 999), groupId, customerId, invoiceId: alloc.invId, amount: alloc.adj, date, method, ref, notes, cashDisc: alloc.disc, totalReceived });
     }
     // Cash Discount entries pushed AFTER main payment entry
     if (alloc.disc > 0 && alloc.adj === 0) {
-      DB.payments.push({ id: Date.now() + Math.random(), groupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: 'Cash Discount', cashDisc: alloc.disc, totalReceived });
+      DB.payments.push({ id: Date.now() * 1000 + Math.floor(Math.random() * 999), groupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: 'Cash Discount', cashDisc: alloc.disc, totalReceived });
     }
     if (alloc.disc > 0 && alloc.adj > 0) {
-      DB.payments.push({ id: Date.now() + Math.random(), groupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: `Cash Discount on ${inv?.invNo}`, cashDisc: alloc.disc, totalReceived });
+      DB.payments.push({ id: Date.now() * 1000 + Math.floor(Math.random() * 999), groupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: `Cash Discount on ${inv?.invNo}`, cashDisc: alloc.disc, totalReceived });
     }
   }
   addLog('create', `Payment ₹${fmt(totalReceived)} [${method}] for invoices ${invNos.join(', ')} (${c?.name}) | Total payment entries: ${DB.payments.length}`);
@@ -3108,6 +3117,7 @@ function printCreditNotePDF(id) {
     <div class="header">
       <div>
         <div class="co-name"><span class="m">MAULI</span> <span class="e">ENTERPRISES</span></div>
+        <div class="co-prop">PROP. SOURABH KAREKAR</div>
         <div class="co-sub">
           ${MAULI_LETTERHEAD.address}<br>
           GSTIN: ${MAULI_LETTERHEAD.gstin} &nbsp;|&nbsp; Ph: ${MAULI_LETTERHEAD.phone} &nbsp;|&nbsp; ${MAULI_LETTERHEAD.email}
@@ -3124,13 +3134,13 @@ function printCreditNotePDF(id) {
       <div class="info-box"><label>Invoice Amount</label><strong>${invAmt}</strong></div>
       <div class="info-box"><label>Reason</label><strong>${reason}</strong></div>
     </div>
-    <div style="text-align:right;font-size:16px;font-weight:700;color:#1a6fd4;margin:10px 0">
-      Credit Note Amount: ${cnAmt}
+    <div style="background:#f8faff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin:10px 0">
+      <div style="font-size:14px;font-weight:700;color:#1e293b">Credit Note Amount</div>
+      <div style="font-size:16px;font-weight:700;color:#1e293b">${cnAmt}</div>
     </div>
     ${notes ? `<div style="margin-top:8px;font-size:12px;color:#64748b">Notes: ${notes.replace(/\n/g,'<br>')}</div>` : ''}
     <div class="footer">
-      <div style="margin-bottom:6px;font-style:italic;color:#94a3b8">This is a computer generated credit note. No signature required.</div>
-      <div>Thank you for your business! &nbsp;|&nbsp; MAULI ENTERPRISES</div>
+      <div>This is a computer generated credit note. No signature required.<br>Thank you! &nbsp;|&nbsp; MAULI ENTERPRISES</div>
     </div>`;
 
   buildPrintWindow(html, cust?.email || null, cust?.phone || null);
@@ -4091,10 +4101,13 @@ function buildPrintWindow(htmlContent, customerEmail, customerPhone) {
   <title>MAULI ENTERPRISES</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;padding:28px;font-size:13px}
+    html,body{height:100%}
+    body{font-family:'Segoe UI',Arial,sans-serif;color:#1e293b;padding:28px;font-size:13px;display:flex;flex-direction:column;min-height:100vh}
+    .print-body{flex:1}
     .header{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #1a6fd4;padding-bottom:14px;margin-bottom:18px}
-    .co-name{font-size:20px;margin-bottom:4px;font-family:'Arial Narrow',Arial,sans-serif;letter-spacing:0.03em}
+    .co-name{font-size:20px;margin-bottom:2px;font-family:'Arial Narrow',Arial,sans-serif;letter-spacing:0.03em}
     .co-name .m{font-weight:700;color:#000}.co-name .e{font-weight:400;color:#9c1c1c}
+    .co-prop{font-size:11px;color:#64748b;line-height:1.5;margin-bottom:1px}
     .co-sub{font-size:11px;color:#64748b;line-height:1.7}
     .logo{width:56px;height:56px;border-radius:8px;object-fit:contain}
     .section-title{font-size:15px;font-weight:700;color:#1355a8;margin:16px 0 10px;padding-bottom:4px;border-bottom:1px solid #cbd5e1}
@@ -4105,7 +4118,7 @@ function buildPrintWindow(htmlContent, customerEmail, customerPhone) {
     .badge{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700}
     .paid{background:#2ecc7120;color:#16a34a}.pending{background:#f39c1220;color:#d97706}.overdue{background:#e74c3c20;color:#dc2626}.partial{background:#4f8ef720;color:#1a6fd4}
     .total-row{background:#f8faff;font-weight:700}
-    .footer{margin-top:20px;border-top:1px solid #cbd5e1;padding-top:12px;font-size:11px;color:#64748b;text-align:center}
+    .footer{border-top:1px solid #cbd5e1;padding-top:10px;font-size:11px;color:#64748b;text-align:center;margin-top:auto}
     .info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;font-size:12px}
     .info-box{background:#f8faff;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px}
     .info-box label{font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:0.4px;display:block;margin-bottom:3px}
@@ -4116,8 +4129,9 @@ function buildPrintWindow(htmlContent, customerEmail, customerPhone) {
     .print-btn{background:#16a34a;color:#fff}.print-btn:hover{background:#15803d}
     .email-btn{background:#1a6fd4;color:#fff}.email-btn:hover{background:#1355a8}
     .wa-btn{background:#25d366;color:#fff}.wa-btn:hover{background:#1ebe5d}
-    @media print{.action-bar,.wa-note{display:none}body{padding:12px}}
-  </style></head><body>
+    @page{size:A4;margin:18mm 15mm}
+    @media print{.action-bar,.wa-note{display:none}body{padding:0;display:block}.footer{position:fixed;bottom:0;left:0;right:0;border-top:1px solid #cbd5e1;padding:8px 15mm;background:#fff;margin:0}}
+  </style></head><body><div class="print-body">
   <div class="action-bar">
     <button onclick="window.print()" class="act-btn print-btn">🖨 Print / Save PDF</button>
     ${emailBtn}
@@ -4128,6 +4142,7 @@ function buildPrintWindow(htmlContent, customerEmail, customerPhone) {
     <strong>Step 2:</strong> WhatsApp will open — attach the saved PDF from your device and send.
   </div>
   ${htmlContent}
+  </div>
   <script>
     var _email = ${customerEmail ? JSON.stringify(customerEmail) : 'null'};
     var _phone = ${customerPhone ? JSON.stringify(String(customerPhone).replace(/\\D/g,'')) : 'null'};
@@ -4205,6 +4220,7 @@ function printLedgerStatement() {
     <div class="header">
       <div>
         <div class="co-name"><span class="m">MAULI</span> <span class="e">ENTERPRISES</span></div>
+        <div class="co-prop">PROP. SOURABH KAREKAR</div>
         <div class="co-sub">
           ${MAULI_LETTERHEAD.address}<br>
           GSTIN: ${MAULI_LETTERHEAD.gstin} &nbsp;|&nbsp; Ph: ${MAULI_LETTERHEAD.phone} &nbsp;|&nbsp; ${MAULI_LETTERHEAD.email}
@@ -4232,8 +4248,7 @@ function printLedgerStatement() {
       </tbody>
     </table>
     <div class="footer">
-      <div style="margin-bottom:6px;font-style:italic;color:#94a3b8">This is a computer generated statement. No signature required.</div>
-      <div>Thank you for your business! &nbsp;|&nbsp; MAULI ENTERPRISES</div>
+      <div>This is a computer generated statement. No signature required.<br>Thank you! &nbsp;|&nbsp; MAULI ENTERPRISES</div>
     </div>`;
 
   const ledgerCust = custIdRaw ? DB.customers.find(c => String(c.id) === custIdRaw) : null;
@@ -4320,6 +4335,7 @@ function printPaymentReceipt(paymentId) {
     <div class="header">
       <div>
         <div class="co-name"><span class="m">MAULI</span> <span class="e">ENTERPRISES</span></div>
+        <div class="co-prop">PROP. SOURABH KAREKAR</div>
         <div class="co-sub">
           ${MAULI_LETTERHEAD.address}<br>
           GSTIN: ${MAULI_LETTERHEAD.gstin} &nbsp;|&nbsp; Ph: ${MAULI_LETTERHEAD.phone} &nbsp;|&nbsp; ${MAULI_LETTERHEAD.email}
@@ -4338,13 +4354,13 @@ function printPaymentReceipt(paymentId) {
       <thead><tr><th>Invoice #</th><th>Invoice Date</th><th>Invoice Amt</th><th>Paid Amt</th><th>Cash Disc</th></tr></thead>
       <tbody>${invRows}</tbody>
     </table>
-    <div style="text-align:right;font-size:16px;font-weight:700;color:#1a6fd4;margin:10px 0">
-      Total Received: ₹${fmt(totalPaid)}${totalDisc > 0 ? `  <span style="font-size:13px;color:#d97706">(+₹${fmt(totalDisc)} discount)</span>` : ''}
+    <div style="background:#f8faff;border:1px solid #e2e8f0;border-radius:8px;padding:14px 18px;display:flex;justify-content:space-between;align-items:center;margin:10px 0">
+      <div style="font-size:14px;font-weight:700;color:#1e293b">Total Received</div>
+      <div style="font-size:16px;font-weight:700;color:#1e293b">₹${fmt(totalPaid)}${totalDisc > 0 ? '&nbsp;&nbsp;<span style="font-size:13px;color:#d97706;font-weight:400">(+₹' + fmt(totalDisc) + ' discount)</span>' : ''}</div>
     </div>
     ${p.notes ? `<div style="margin-top:8px;font-size:12px;color:#64748b">Notes: ${p.notes}</div>` : ''}
     <div class="footer">
-      <div style="margin-bottom:6px;font-style:italic;color:#94a3b8">This is a computer generated receipt. No signature required.</div>
-      <div>Thank you for your payment! &nbsp;|&nbsp; MAULI ENTERPRISES</div>
+      <div>This is a computer generated receipt. No signature required.<br>Thank you! &nbsp;|&nbsp; MAULI ENTERPRISES</div>
     </div>`;
 
   buildPrintWindow(html, c?.email || null, c?.phone || null);
