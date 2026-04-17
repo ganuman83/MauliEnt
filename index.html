@@ -4131,7 +4131,15 @@ function printLedgerStatement() {
     // Find latest payment date for this invoice
     const invPayments = DB.payments.filter(p => String(p.invoiceId) === String(inv.id) && p.amount > 0);
     invPayments.sort((a,b) => new Date(b.date) - new Date(a.date));
-    const paymentDate = invPayments.length > 0 ? fmtDate(invPayments[0].date) : '—';
+    const invCreditNotes = (DB.creditNotes || []).filter(cn => String(cn.invoiceId) === String(inv.id));
+    let paymentDate;
+    if (invPayments.length > 0) {
+      paymentDate = fmtDate(invPayments[0].date);
+    } else if (invCreditNotes.length > 0) {
+      paymentDate = '<span style="color:#7c3aed;font-weight:600;font-size:0.78em">Credit Note</span>';
+    } else {
+      paymentDate = '—';
+    }
     return `<tr>
       <td>${idx+1}</td>
       ${showCustCol ? `<td>${c?.name || '—'}</td>` : ''}
