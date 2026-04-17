@@ -1367,7 +1367,13 @@ async function load() {
     for (const key of FS_COLLECTIONS) {
       const { data, error } = await _db.from(key).select('*');
       if (error) throw new Error(`Load ${key}: ${error.message}`);
-      DB[key] = data || [];
+      const seen = new Set();
+      DB[key] = (data || []).filter(row => {
+        const k = String(row.id);
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      });
     }
     // Sort log newest first
     DB.log.sort((a, b) => new Date(b.time) - new Date(a.time));
