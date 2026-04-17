@@ -170,11 +170,104 @@ tr:hover td{background:rgba(26,111,212,0.04)}
 .log-time{color:var(--muted);font-size:0.75rem}
 hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 .btn:disabled{opacity:0.55;cursor:not-allowed;pointer-events:none}
+
+/* ===== CUSTOM CONFIRM DIALOG ===== */
+#confirm-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  background: rgba(15, 23, 42, 0.55);
+  animation: confirmFadeIn 0.18s ease;
+}
+#confirm-overlay.open { display: flex; }
+@keyframes confirmFadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.confirm-box {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 32px 28px 24px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.12);
+  text-align: center;
+  animation: confirmSlideUp 0.22s cubic-bezier(.34,1.3,.64,1);
+  position: relative;
+  border: 1px solid var(--border);
+}
+@keyframes confirmSlideUp {
+  from { transform: translateY(24px) scale(0.96); opacity: 0; }
+  to   { transform: translateY(0)    scale(1);    opacity: 1; }
+}
+.confirm-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  margin: 0 auto 16px;
+}
+.confirm-icon.danger  { background: #fee2e2; }
+.confirm-icon.warning { background: #fef3c7; }
+.confirm-icon.info    { background: #dbeafe; }
+.confirm-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--text);
+}
+.confirm-msg {
+  font-size: 0.875rem;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 24px;
+  white-space: pre-line;
+}
+.confirm-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.confirm-actions .btn {
+  min-width: 110px;
+  justify-content: center;
+  font-size: 0.875rem;
+  padding: 10px 20px;
+  border-radius: 10px;
+}
+.confirm-cancel-btn {
+  background: var(--input-bg);
+  border: 1px solid var(--border);
+  color: var(--muted);
+}
+.confirm-cancel-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--input-bg); }
 </style>
 <body>
 
 <!-- ===== TOAST ===== -->
 <div class="toast" id="toast"></div>
+
+<!-- ===== CUSTOM CONFIRM DIALOG ===== -->
+<div id="confirm-overlay">
+  <div class="confirm-box">
+    <div class="confirm-icon" id="confirm-icon">⚠️</div>
+    <div class="confirm-title" id="confirm-title">Are you sure?</div>
+    <div class="confirm-msg" id="confirm-msg"></div>
+    <div class="confirm-actions">
+      <button class="btn confirm-cancel-btn" id="confirm-cancel-btn">Cancel</button>
+      <button class="btn btn-danger" id="confirm-ok-btn">Confirm</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== DUPLICATE WARNING ===== -->
 <div style="position:fixed;top:70px;left:50%;transform:translateX(-50%);z-index:500;width:90%;max-width:500px;display:none" id="dup-global">
@@ -310,7 +403,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="section-header" style="margin-bottom:16px">
         <div class="section-title">Customers</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm dev-only" onclick="openImportModal('customers')">📥 Import Excel</button>
+          <button class="btn btn-outline btn-sm dev-only" onclick="openImportModal('customers')">📥 Import</button>
           <button class="btn btn-outline btn-sm" onclick="exportCustomers()">📤 Export</button>
           <button class="btn btn-primary btn-sm" onclick="openCustomerModal()">➕ Add Customer</button>
         </div>
@@ -334,16 +427,17 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="section-header" style="margin-bottom:16px">
         <div class="section-title">Invoices</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm dev-only" onclick="openImportModal('invoices')">📥 Import Excel</button>
-          <button class="btn btn-outline btn-sm" onclick="exportInvoices()">📤 Export Unpaid</button>
+          <button class="btn btn-outline btn-sm dev-only" onclick="openImportModal('invoices')">📥 Import</button>
+          <button class="btn btn-outline btn-sm" onclick="exportInvoices()">📤 Export</button>
           <button class="btn btn-primary btn-sm" onclick="openInvoiceModal()">➕ New Invoice</button>
         </div>
       </div>
       <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
         <input class="search-input" placeholder="Search invoices..." id="inv-search" oninput="renderInvoices()" style="min-width:160px">
-        <select class="filter-btn" id="inv-cust-filter" onchange="renderInvoices()" style="min-width:140px">
+        <select class="filter-btn" id="inv-cust-filter" onchange="renderInvoices();toggleCustClear('inv-cust-filter','inv-cust-clear')" style="min-width:140px">
           <option value="">All Customers</option>
         </select>
+        <button class="filter-btn" id="inv-cust-clear" onclick="document.getElementById('inv-cust-filter').value='';renderInvoices();toggleCustClear('inv-cust-filter','inv-cust-clear')" title="Clear customer filter" style="padding:7px 8px;display:none">✕</button>
         <select class="filter-btn" id="inv-status-filter" onchange="renderInvoices()" style="min-width:110px">
           <option value="">All Status</option>
           <option value="pending">Pending</option>
@@ -379,9 +473,10 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       </div>
       <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
         <input class="search-input" placeholder="Search payments..." id="pay-search" oninput="renderPayments()" style="min-width:160px">
-        <select class="filter-btn" id="pay-cust-filter" onchange="renderPayments()" style="min-width:140px">
+        <select class="filter-btn" id="pay-cust-filter" onchange="renderPayments();toggleCustClear('pay-cust-filter','pay-cust-clear')" style="min-width:140px">
           <option value="">All Customers</option>
         </select>
+        <button class="filter-btn" id="pay-cust-clear" onclick="document.getElementById('pay-cust-filter').value='';renderPayments();toggleCustClear('pay-cust-filter','pay-cust-clear')" title="Clear customer filter" style="padding:7px 8px;display:none">✕</button>
         <select class="filter-btn" id="pay-method-filter" onchange="renderPayments()" style="min-width:120px">
           <option value="">All Methods</option>
           <option value="Cash">Cash</option>
@@ -411,10 +506,14 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     <div class="tab-panel" id="tab-overdue">
       <div class="overdue-alert" id="overdue-alert" style="display:none">
         <p>⚠ Invoices past due date — send reminders immediately.</p>
-        <button class="btn btn-danger btn-sm" onclick="exportOverdueExcel()">Export Overdue Excel</button>
+        <button class="btn btn-danger btn-sm" onclick="exportOverdueExcel()">📤 Export Overdue</button>
       </div>
       <div class="section-header" style="margin-bottom:16px">
         <div class="section-title">Overdue Invoices</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm" onclick="exportUnpaidInvoices()">📤 Export Unpaid</button>
+          <button class="btn btn-outline btn-sm" onclick="exportOverdueExcel()">📤 Export Overdue</button>
+        </div>
       </div>
       <div class="table-wrap"><table>
         <thead><tr><th>Invoice #</th><th>Customer</th><th>Due Date</th><th>Days Overdue</th><th>Balance</th><th>Actions</th></tr></thead>
@@ -680,16 +779,17 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       <div class="section-header" style="margin-bottom:16px">
         <div class="section-title">📒 Customer Invoice &amp; Payment Ledger</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
-          <button class="btn btn-outline btn-sm" onclick="exportLedger()">📤 Export Ledger</button>
+          <button class="btn btn-outline btn-sm" onclick="exportLedger()">📤 Export</button>
           <button class="btn btn-primary btn-sm" onclick="printLedgerStatement()">🧾 PDF Statement</button>
         </div>
       </div>
       <div class="filter-bar" style="gap:12px;flex-wrap:wrap;align-items:center;background:var(--card);padding:14px 16px;border-radius:12px;border:1px solid var(--border);margin-bottom:16px">
         <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:200px">
           <label style="font-size:0.82rem;color:var(--muted);white-space:nowrap;font-weight:500">Customer</label>
-          <select class="search-input" id="ledger-cust" onchange="renderLedger()" style="flex:1">
+          <select class="search-input" id="ledger-cust" onchange="renderLedger();toggleCustClear('ledger-cust','ledger-cust-clear')" style="flex:1">
             <option value="">— All Customers —</option>
           </select>
+          <button id="ledger-cust-clear" onclick="document.getElementById('ledger-cust').value='';renderLedger();toggleCustClear('ledger-cust','ledger-cust-clear')" title="Clear customer filter" style="background:var(--input-bg);border:1px solid var(--border);border-radius:8px;color:var(--muted);padding:7px 10px;cursor:pointer;font-size:0.8rem;font-family:inherit;display:none">✕</button>
         </div>
         <div style="display:flex;align-items:center;gap:8px">
           <label style="font-size:0.82rem;color:var(--muted);white-space:nowrap;font-weight:500">Payment Status</label>
@@ -1312,7 +1412,7 @@ async function migrateFromLocalStorage() {
         if (error) throw new Error(error.message);
       }
     }
-    toast('✅ Data migrated to Supabase successfully!', 'success');
+    console.log('✅ Data migrated to Supabase successfully.');
   } catch(e) {
     toast('Migration error: ' + e.message, 'error');
   }
@@ -1353,7 +1453,9 @@ function startRealtimeListeners() {
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') updateSyncStatus('synced');
-        if (status === 'CHANNEL_ERROR') updateSyncStatus('error');
+        else if (status === 'CHANNEL_ERROR') updateSyncStatus('error');
+        // TIMED_OUT / CLOSED are transient reconnect states — Supabase auto-retries, don't show error
+        else if (status === 'TIMED_OUT' || status === 'CLOSED') updateSyncStatus('syncing');
       });
     _unsubscribers.push(() => _db.removeChannel(channel));
   });
@@ -1390,11 +1492,12 @@ function updateSyncStatus(state) {
     dot.style.background = 'var(--warning)';
     dot.style.animation = 'none';
     dot.title = 'Syncing...';
-  } else {
+  } else if (state === 'error') {
     dot.style.background = 'var(--danger)';
     dot.style.animation = 'pulse-red 1s infinite';
     dot.title = 'Sync error — check internet connection';
   }
+  // Unknown/transient states are silently ignored — dot stays at last known state
 }
 
 // Live clock in topbar
@@ -1856,7 +1959,7 @@ function renderLog() {
 }
 
 async function clearLog() {
-  if (!confirm('Clear all activity log entries?')) return;
+  if (!await confirmDialog({ title: 'Clear Activity Log', msg: 'This will permanently remove all activity log entries. This action cannot be undone.', type: 'danger', okLabel: 'Clear Log' })) return;
   if (currentUser?.role !== 'dev') return toast('Only Dev can clear the log.', 'error');
   DB.log = [];
   try { localStorage.setItem('mauli_log', '[]'); } catch(e) {}
@@ -1955,7 +2058,7 @@ async function saveCustomer() {
 
 async function deleteCustomer(id) {
   const c = DB.customers.find(c => c.id === id);
-  if (!confirm(`Delete customer "${c?.name}"? This also removes their invoices and payments.`)) return;
+  if (!await confirmDialog({ title: 'Delete Customer', msg: `Delete "${c?.name}"?\n\nThis will also permanently remove all their invoices and payments.`, type: 'danger', okLabel: 'Delete Customer' })) return;
   // Delete from Firestore
   const invIds = DB.invoices.filter(i => i.customerId === id).map(i => i.id);
   const payIds = DB.payments.filter(p => p.customerId === id).map(p => p.id);
@@ -2030,8 +2133,8 @@ function renderCustomers() {
       <td><span class="badge ${statusMap[status]}">${status}</span></td>
       <td>
         <div class="action-btns">
-          <button class="btn btn-outline btn-xs" onclick="openCustomerModal(${c.id})">✏️</button>
-          <button class="btn btn-xs" style="background:#e74c3c20;color:var(--danger);border:1px solid #e74c3c40" onclick="openReminderModal(${c.id})">🔔</button>
+          <button class="btn btn-outline btn-xs" onclick="openCustomerModal(${c.id})">✏️ Edit</button>
+          <button class="btn btn-xs" style="background:#e74c3c20;color:var(--danger);border:1px solid #e74c3c40" onclick="openReminderModal(${c.id})">🔔 Remind</button>
           <button class="btn btn-danger btn-xs" onclick="deleteCustomer(${c.id})">🗑</button>
         </div>
       </td>
@@ -2143,7 +2246,7 @@ async function saveInvoice() {
 
 async function deleteInvoice(id) {
   const inv = DB.invoices.find(i => i.id === id);
-  if (!confirm(`Delete invoice ${inv?.invNo}?`)) return;
+  if (!await confirmDialog({ title: 'Delete Invoice', msg: `Delete invoice ${inv?.invNo}?\n\nAll associated payments and credit notes will also be removed.`, type: 'danger', okLabel: 'Delete Invoice' })) return;
   const payIds = DB.payments.filter(p => p.invoiceId === id).map(p => p.id);
   const cnIds  = (DB.creditNotes||[]).filter(cn => cn.invoiceId === id).map(cn => cn.id);
   for (const pid of payIds) await deleteDoc('payments', pid);
@@ -2255,14 +2358,20 @@ function renderInvoices() {
       <td><span class="badge ${statusMap[status]}">${status}</span></td>
       <td>
         <div class="action-btns">
-          ${isDev || status !== 'paid' ? `<button class="btn btn-outline btn-xs" onclick="openInvoiceModal(${inv.id})">✏️</button>` : ''}
-          <button class="btn btn-primary btn-xs" onclick="openPaymentModalForInvoice(${inv.id})">💳</button>
-          <button class="btn btn-xs" style="background:#4f8ef720;color:var(--accent);border:1px solid #4f8ef740" onclick="openCNModalForInvoice(${inv.id})" title="Add Credit Note">CN</button>
+          ${isDev || status !== 'paid' ? `<button class="btn btn-outline btn-xs" onclick="openInvoiceModal(${inv.id})">✏️ Edit</button>` : ''}
+          <button class="btn btn-primary btn-xs" onclick="openPaymentModalForInvoice(${inv.id})">💳 Payment</button>
+          <button class="btn btn-xs" style="background:#4f8ef720;color:var(--accent);border:1px solid #4f8ef740" onclick="openCNModalForInvoice(${inv.id})" title="Add Credit Note">📝 Credit Note</button>
           <button class="btn btn-danger btn-xs" onclick="deleteInvoice(${inv.id})">🗑</button>
         </div>
       </td>
     </tr>`;
   }).join('');
+}
+
+function toggleCustClear(selectId, btnId) {
+  const sel = document.getElementById(selectId);
+  const btn = document.getElementById(btnId);
+  if (sel && btn) btn.style.display = sel.value ? 'inline-flex' : 'none';
 }
 
 function updateCustomerDropdowns() {
@@ -2868,7 +2977,7 @@ async function saveCreditNote() {
   const inv = DB.invoices.find(i => i.id === invoiceId);
   const bal = parseFloat(inv.amount) - getPaidAmount(invoiceId);
   if (amount > bal + 0.01) {
-    if (!confirm(`Credit amount ₹${fmt(amount)} exceeds current balance ₹${fmt(bal)}. Continue?`)) return;
+    if (!await confirmDialog({ title: 'Credit Exceeds Balance', msg: `Credit amount ₹${fmt(amount)} exceeds the current invoice balance of ₹${fmt(bal)}.\n\nDo you want to continue?`, type: 'warning', okLabel: 'Continue Anyway' })) return;
   }
 
   btnGuard('btn-save-creditnote');
@@ -2887,7 +2996,7 @@ async function saveCreditNote() {
 
 async function deleteCreditNote(id) {
   const cn = DB.creditNotes.find(c => c.id === id);
-  if (!confirm(`Delete Credit Note ${cn?.cnNumber}?`)) return;
+  if (!await confirmDialog({ title: 'Delete Credit Note', msg: `Permanently delete Credit Note ${cn?.cnNumber}?\n\nThis action cannot be undone.`, type: 'danger', okLabel: 'Delete' })) return;
   await deleteDoc('creditNotes', id);
   DB.creditNotes = DB.creditNotes.filter(c => c.id !== id);
   addLog('delete', `Deleted Credit Note ${cn?.cnNumber}`);
@@ -3011,7 +3120,7 @@ function renderOverdue() {
       <td style="color:var(--danger)">₹${fmt(bal)}</td>
       <td>
         <button class="btn btn-outline btn-xs" onclick="openReminderModal(${inv.customerId})">🔔 Remind</button>
-        <button class="btn btn-primary btn-xs" onclick="openPaymentModalForInvoice(${inv.id})">💳 Pay</button>
+        <button class="btn btn-primary btn-xs" onclick="openPaymentModalForInvoice(${inv.id})">💳 Payment</button>
       </td>
     </tr>`;
   }).join('');
@@ -3298,7 +3407,7 @@ async function deleteUserFromApp(id) {
   const u = DB.users.find(u => u.id === id);
   if (!u) return;
   if (u.id === currentUser?.id) return toast("You can't delete yourself.", 'error');
-  if (!confirm(`Delete user "${u.username}"?`)) return;
+  if (!await confirmDialog({ title: 'Delete User', msg: `Delete user "${u.username}"?\n\nThis will permanently remove their account. This action cannot be undone.`, type: 'danger', okLabel: 'Delete User' })) return;
   DB.users = DB.users.filter(u => u.id !== id);
   save('users');
   deleteDoc('users', id);
@@ -3442,7 +3551,7 @@ async function restoreBackup(input) {
   if (!file) return;
   if (!file.name.endsWith('.zip')) return toast('Please select a valid .zip backup file.', 'error');
 
-  if (!confirm('⚠ This will OVERWRITE all current data with the backup. Are you sure?')) {
+  if (!await confirmDialog({ title: 'Restore from Backup', msg: '⚠ This will OVERWRITE all current data with the selected backup file.\n\nAll existing customers, invoices, payments and credit notes will be replaced.\n\nAre you sure?', type: 'warning', okLabel: 'Yes, Restore' })) {
     input.value = '';
     return;
   }
@@ -3491,7 +3600,7 @@ async function restoreSingleJSON(input, collectionKey) {
   const labels = { customers: 'Customers', invoices: 'Invoices', payments: 'Payments', creditNotes: 'Credit Notes', expenses: 'Expenses' };
   const label  = labels[collectionKey] || collectionKey;
 
-  if (!confirm(`⚠ This will OVERWRITE all current ${label} data with the contents of:\n\n"${file.name}"\n\nAll other data (${Object.values(labels).filter(l=>l!==label).join(', ')}) will remain unchanged.\n\nAre you sure?`)) {
+  if (!await confirmDialog({ title: `Import ${label} Data`, msg: `This will OVERWRITE all current ${label} data with:\n"${file.name}"\n\nAll other data (${Object.values(labels).filter(l=>l!==label).join(', ')}) will remain unchanged.\n\nAre you sure?`, type: 'warning', okLabel: 'Yes, Import' })) {
     input.value = '';
     return;
   }
@@ -3730,11 +3839,11 @@ function exportCustomers() {
 }
 
 function exportInvoices() {
-  const data = DB.invoices.filter(i => getInvoiceStatus(i) !== 'paid').map(inv => {
+  const data = DB.invoices.map(inv => {
     const c = DB.customers.find(c => c.id === inv.customerId);
     return { InvoiceNo: inv.invNo, Customer: c?.name, Date: inv.date, DueDate: inv.dueDate, Amount: inv.amount, Paid: getPaidAmount(inv.id), Balance: parseFloat(inv.amount) - getPaidAmount(inv.id), Status: getInvoiceStatus(inv) };
   });
-  exportXLSX(data, 'Unpaid_Invoices_MauliEnt');
+  exportXLSX(data, 'Invoices_MauliEnt');
 }
 
 function exportPayments() {
@@ -3744,6 +3853,14 @@ function exportPayments() {
     return { Date: p.date, Customer: c?.name, InvoiceNo: inv?.invNo, Amount: p.amount, Method: p.method, Reference: p.ref, Notes: p.notes || '' };
   });
   exportXLSX(data, 'Payments_MauliEnt');
+}
+
+function exportUnpaidInvoices() {
+  const data = DB.invoices.filter(i => getInvoiceStatus(i) !== 'paid').map(inv => {
+    const c = DB.customers.find(c => c.id === inv.customerId);
+    return { InvoiceNo: inv.invNo, Customer: c?.name, Date: inv.date, DueDate: inv.dueDate, Amount: inv.amount, Paid: getPaidAmount(inv.id), Balance: parseFloat(inv.amount) - getPaidAmount(inv.id), Status: getInvoiceStatus(inv) };
+  });
+  exportXLSX(data, 'Unpaid_Invoices_MauliEnt');
 }
 
 function exportOverdueExcel() {
@@ -4004,18 +4121,23 @@ function printLedgerStatement() {
   const totalPaid     = invList.reduce((s,i) => s + getPaidAmount(i.id), 0);
   const totalDue      = totalInvoiced - totalPaid;
 
+  const showCustCol = !custIdRaw; // only show customer column when All Customers selected
   const statusMap = { paid:'paid', pending:'pending', partial:'partial', overdue:'overdue' };
   const rows = invList.map((inv, idx) => {
     const c    = DB.customers.find(c => String(c.id) === String(inv.customerId));
     const paid = getPaidAmount(inv.id);
     const bal  = parseFloat(inv.amount) - paid;
     const st   = getInvoiceStatus(inv);
+    // Find latest payment date for this invoice
+    const invPayments = DB.payments.filter(p => String(p.invoiceId) === String(inv.id) && p.amount > 0);
+    invPayments.sort((a,b) => new Date(b.date) - new Date(a.date));
+    const paymentDate = invPayments.length > 0 ? fmtDate(invPayments[0].date) : '—';
     return `<tr>
       <td>${idx+1}</td>
-      <td>${c?.name || '—'}</td>
+      ${showCustCol ? `<td>${c?.name || '—'}</td>` : ''}
       <td><strong>${inv.invNo}</strong></td>
       <td>${fmtDate(inv.date)}</td>
-      <td>${fmtDate(inv.dueDate)}</td>
+      <td>${paymentDate}</td>
       <td style="text-align:right">₹${fmt(inv.amount)}</td>
       <td style="text-align:right;color:#16a34a">₹${fmt(paid)}</td>
       <td style="text-align:right;color:${bal>0?'#dc2626':'#16a34a'}"><strong>₹${fmt(bal)}</strong></td>
@@ -4041,11 +4163,11 @@ function printLedgerStatement() {
       <div class="info-box"><label>Generated On</label><strong>${new Date().toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}</strong></div>
     </div>
     <table>
-      <thead><tr><th>#</th><th>Customer</th><th>Invoice #</th><th>Date</th><th>Due Date</th><th style="text-align:right">Amount</th><th style="text-align:right">Paid</th><th style="text-align:right">Balance</th><th>Status</th></tr></thead>
+      <thead><tr><th>#</th>${showCustCol ? '<th>Customer</th>' : ''}<th>Invoice #</th><th>Date</th><th>Payment Date</th><th style="text-align:right">Amount</th><th style="text-align:right">Paid</th><th style="text-align:right">Balance</th><th>Status</th></tr></thead>
       <tbody>
         ${rows}
         <tr class="total-row">
-          <td colspan="5" style="text-align:right">Total</td>
+          <td colspan="${showCustCol ? 5 : 4}" style="text-align:right">Total</td>
           <td style="text-align:right">₹${fmt(totalInvoiced)}</td>
           <td style="text-align:right;color:#16a34a">₹${fmt(totalPaid)}</td>
           <td style="text-align:right;color:#dc2626">₹${fmt(totalDue)}</td>
@@ -4153,7 +4275,7 @@ function printPaymentReceipt(paymentId) {
     <div class="info-grid">
       <div class="info-box"><label>Receipt No.</label><strong>${receiptNo}</strong></div>
       <div class="info-box"><label>Payment Date</label><strong>${fmtDate(p.date)}</strong></div>
-      <div class="info-box"><label>Received From</label><strong>${c?.name || '—'}</strong>${c?.company ? '<br><span style="color:#64748b;font-size:11px">'+c.company+'</span>' : ''}</div>
+      <div class="info-box"><label>Received From</label><strong>${c?.company || c?.name || '—'}</strong>${c?.company ? '<br><span style="color:#64748b;font-size:11px">'+c.name+'</span>' : ''}</div>
       <div class="info-box"><label>Payment Method</label><strong>${p.method}</strong>${p.ref ? '<br><span style="color:#64748b;font-size:11px">Ref: '+p.ref+'</span>' : ''}</div>
     </div>
     <table>
@@ -4181,8 +4303,8 @@ async function clearCollection(key) {
   if (currentUser?.role !== 'dev') return toast('Only Dev can do this.', 'error');
   const labels = { customers: 'Customers', invoices: 'Invoices', payments: 'Payments', creditNotes: 'Credit Notes' };
   const label = labels[key] || key;
-  if (!confirm(`⚠ This will permanently delete ALL ${label} from Supabase.\n\nAre you absolutely sure?`)) return;
-  if (!confirm(`Second confirmation — delete ALL ${label}? This cannot be undone.`)) return;
+  if (!await confirmDialog({ title: `Delete All ${label}`, msg: `⚠ This will permanently delete ALL ${label} from Supabase.\n\nThis action is irreversible. Are you absolutely sure?`, type: 'danger', okLabel: 'Yes, Delete All' })) return;
+  if (!await confirmDialog({ title: 'Final Confirmation', msg: `Second confirmation required.\n\nDelete ALL ${label}? This cannot be undone.`, type: 'danger', okLabel: 'Permanently Delete' })) return;
 
   toast(`Deleting ${label}...`, 'info');
   stopRealtimeListeners();
@@ -4208,8 +4330,8 @@ async function clearCollection(key) {
 
 async function clearTestData() {
   if (currentUser?.role !== 'dev') return toast('Only Dev can do this.', 'error');
-  if (!confirm('⚠ This will permanently delete ALL Customers, Invoices, Payments and Credit Notes from Supabase.\n\nUser accounts will NOT be affected.\n\nAre you absolutely sure?')) return;
-  if (!confirm('Second confirmation — this cannot be undone. Proceed?')) return;
+  if (!await confirmDialog({ title: 'Delete Everything', msg: '⚠ This will permanently delete ALL Customers, Invoices, Payments and Credit Notes from Supabase.\n\nUser accounts will NOT be affected.\n\nAre you absolutely sure?', type: 'danger', okLabel: 'Yes, Delete All' })) return;
+  if (!await confirmDialog({ title: 'Final Confirmation', msg: 'Second confirmation required.\n\nThis will wipe all data and cannot be undone. Proceed?', type: 'danger', okLabel: 'Permanently Delete Everything' })) return;
   toast('Clearing all data...', 'info');
 
   const CLEAR_KEYS = ['customers','invoices','payments','creditNotes'];
@@ -4272,7 +4394,7 @@ async function deletePaymentGroup(paymentId, groupId) {
   const inv = DB.invoices.find(i => i.id === rep.invoiceId);
   const receiptLabel = rep.receiptNo ? `Receipt ${rep.receiptNo}` : (groupId || 'Payment');
 
-  if (!confirm(`🗑 Delete ${receiptLabel}?\n\nCustomer: ${c?.name || '—'}\nInvoice: ${inv?.invNo || '—'}\nAmount: ₹${fmt(rep.totalReceived || rep.amount)}\nMethod: ${rep.method}\n\nThis will permanently remove the payment and restore the invoice balance.`)) return;
+  if (!await confirmDialog({ title: `Delete ${receiptLabel}`, msg: `Customer: ${c?.name || '—'}\nInvoice: ${inv?.invNo || '—'}\nAmount: ₹${fmt(rep.totalReceived || rep.amount)}\nMethod: ${rep.method}\n\nThis will permanently remove the payment and restore the invoice balance.`, type: 'danger', okLabel: 'Delete Payment' })) return;
 
   // Collect IDs to delete from Supabase
   const idsToDelete = groupId
@@ -4821,7 +4943,7 @@ async function saveExpense() {
 
 async function deleteExpense(id) {
   const e = (DB.expenses || []).find(x => x.id === id);
-  if (!confirm(`Delete expense: ${e?.category} ₹${fmt(e?.amount)}?`)) return;
+  if (!await confirmDialog({ title: 'Delete Expense', msg: `Delete expense: ${e?.category} — ₹${fmt(e?.amount)}?\n\nThis action cannot be undone.`, type: 'danger', okLabel: 'Delete Expense' })) return;
   await deleteDoc('expenses', id);
   DB.expenses = DB.expenses.filter(x => x.id !== id);
   addLog('delete', `Deleted expense: ${e?.category} ₹${fmt(e?.amount)}`);
@@ -4831,8 +4953,8 @@ async function deleteExpense(id) {
 
 async function deleteAllExpenses() {
   if (currentUser?.role !== 'dev') return toast('Only Dev can delete all expenses.', 'error');
-  if (!confirm('⚠ Delete ALL expenses permanently?')) return;
-  if (!confirm('Second confirmation — this cannot be undone. Proceed?')) return;
+  if (!await confirmDialog({ title: 'Delete All Expenses', msg: '⚠ This will permanently delete ALL expenses from Supabase.\n\nThis action is irreversible. Are you absolutely sure?', type: 'danger', okLabel: 'Yes, Delete All' })) return;
+  if (!await confirmDialog({ title: 'Final Confirmation', msg: 'Second confirmation required.\n\nDelete ALL expenses? This cannot be undone.', type: 'danger', okLabel: 'Permanently Delete' })) return;
   DB.expenses = [];
   try { localStorage.removeItem('mauli_expenses'); } catch(e) {}
   if (_db) {
@@ -4913,6 +5035,52 @@ function renderExpenses() {
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').catch(() => {});
+}
+
+// ============================================================
+// CUSTOM CONFIRM DIALOG — replaces browser confirm()
+// Usage: await confirmDialog({ title, msg, type, okLabel })
+// type: 'danger' | 'warning' | 'info'
+// ============================================================
+function confirmDialog({ title = 'Are you sure?', msg = '', type = 'danger', okLabel = 'Confirm', cancelLabel = 'Cancel' } = {}) {
+  return new Promise(resolve => {
+    const overlay   = document.getElementById('confirm-overlay');
+    const iconEl    = document.getElementById('confirm-icon');
+    const titleEl   = document.getElementById('confirm-title');
+    const msgEl     = document.getElementById('confirm-msg');
+    const okBtn     = document.getElementById('confirm-ok-btn');
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
+
+    const icons = { danger: '🗑️', warning: '⚠️', info: 'ℹ️' };
+    const iconBg = { danger: 'danger', warning: 'warning', info: 'info' };
+    const okColors = { danger: 'btn-danger', warning: 'btn-warning', info: 'btn-primary' };
+
+    iconEl.textContent = icons[type] || '⚠️';
+    iconEl.className   = 'confirm-icon ' + (iconBg[type] || 'warning');
+    titleEl.textContent = title;
+    msgEl.textContent   = msg;
+    cancelBtn.textContent = cancelLabel;
+
+    okBtn.textContent = okLabel;
+    okBtn.className   = 'btn ' + (type === 'danger' ? 'btn-danger' : type === 'warning' ? 'btn-primary' : 'btn-primary');
+
+    overlay.classList.add('open');
+
+    function finish(result) {
+      overlay.classList.remove('open');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+      overlay.removeEventListener('click', onBackdrop);
+      resolve(result);
+    }
+    function onOk()      { finish(true);  }
+    function onCancel()  { finish(false); }
+    function onBackdrop(e) { if (e.target === overlay) finish(false); }
+
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+    overlay.addEventListener('click', onBackdrop);
+  });
 }
 
 // ============================================================
