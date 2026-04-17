@@ -3070,6 +3070,7 @@ function renderCreditNotes() {
       <td style="color:var(--muted);font-size:0.82rem">${cn.notes || '—'}</td>
       <td>
         <div class="action-btns">
+          <button class="btn btn-outline btn-xs" onclick="printCreditNotePDF(${cn.id})">🖨️ PDF</button>
           <button class="btn btn-outline btn-xs" onclick="openEditCNModal(${cn.id})">✏️ Edit</button>
           <button class="btn btn-danger btn-xs" onclick="deleteCreditNote(${cn.id})">🗑</button>
         </div>
@@ -3087,6 +3088,112 @@ function exportCreditNotes() {
     return { CNNumber: cn.cnNumber, Date: cn.date, Customer: c?.name, InvoiceNo: inv?.invNo, Amount: parseFloat(cn.amount), Reason: cn.reason, Notes: cn.notes || '' };
   });
   exportXLSX(data, 'CreditNotes_MauliEnt');
+}
+
+function printCreditNotePDF(id) {
+  const cn  = (DB.creditNotes || []).find(c => c.id === id);
+  if (!cn) return toast('Credit note not found.', 'error');
+  const cust = DB.customers.find(c => c.id === cn.customerId);
+  const inv  = DB.invoices.find(i => i.id === cn.invoiceId);
+
+  const custName   = cust?.name  || '—';
+  const invNo      = inv?.invNo  || '—';
+  const invAmt     = inv ? '₹' + fmt(parseFloat(inv.amount)) : '—';
+  const cnAmt      = '₹' + fmt(parseFloat(cn.amount));
+  const cnDate     = fmtDate(cn.date);
+  const reason     = cn.reason   || '—';
+  const notes      = cn.notes    || '';
+
+  const notesRow = notes
+    ? `<tr><td class="lbl">Notes</td><td>${notes.replace(/\n/g,'<br>')}</td></tr>`
+    : '';
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Credit Note ${cn.cnNumber}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&display=swap');
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'DM Sans',sans-serif;background:#fff;color:#1e293b;padding:40px;max-width:720px;margin:0 auto}
+  .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:32px;padding-bottom:20px;border-bottom:2px solid #1a6fd4}
+  .brand{font-family:'Arial Narrow',Arial,sans-serif}
+  .brand .name{font-size:1.8rem;font-weight:700;color:#000;line-height:1}
+  .brand .sub{font-size:1.3rem;font-weight:400;color:#9c1c1c;line-height:1}
+  .doc-title{text-align:right}
+  .doc-title h1{font-size:1.6rem;font-weight:700;color:#1a6fd4;letter-spacing:1px}
+  .doc-title .cn-num{font-size:1rem;color:#64748b;margin-top:4px}
+  .doc-title .cn-date{font-size:0.88rem;color:#64748b;margin-top:2px}
+  .info-table{width:100%;border-collapse:collapse;margin-bottom:28px}
+  .info-table tr{border-bottom:1px solid #e2e8f0}
+  .info-table tr:last-child{border-bottom:none}
+  .info-table td{padding:12px 14px;font-size:0.9rem;vertical-align:top}
+  .info-table td.lbl{font-weight:600;color:#64748b;width:38%;text-transform:uppercase;font-size:0.78rem;letter-spacing:0.4px}
+  .highlight-row td{background:#f0f4fa}
+  .amount-row td{background:#1a6fd415}
+  .amount-row td:last-child{font-size:1.1rem;font-weight:700;color:#1a6fd4}
+  .footer{margin-top:40px;padding-top:16px;border-top:1px solid #e2e8f0;font-size:0.78rem;color:#94a3b8;text-align:center}
+  @media print{body{padding:20px}button{display:none}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="brand">
+    <div class="name">MAULI</div>
+    <div class="sub">ENTERPRISES</div>
+  </div>
+  <div class="doc-title">
+    <h1>CREDIT NOTE</h1>
+    <div class="cn-num">${cn.cnNumber}</div>
+    <div class="cn-date">Date: ${cnDate}</div>
+  </div>
+</div>
+
+<table class="info-table">
+  <tr class="highlight-row">
+    <td class="lbl">Customer Name</td>
+    <td><strong>${custName}</strong></td>
+  </tr>
+  <tr>
+    <td class="lbl">Credit Note No.</td>
+    <td>${cn.cnNumber}</td>
+  </tr>
+  <tr>
+    <td class="lbl">Date</td>
+    <td>${cnDate}</td>
+  </tr>
+  <tr>
+    <td class="lbl">Invoice No. (Against)</td>
+    <td>${invNo}</td>
+  </tr>
+  <tr>
+    <td class="lbl">Invoice Amount</td>
+    <td>${invAmt}</td>
+  </tr>
+  <tr class="amount-row">
+    <td class="lbl">Credit Note Amount</td>
+    <td>${cnAmt}</td>
+  </tr>
+  <tr>
+    <td class="lbl">Reason</td>
+    <td>${reason}</td>
+  </tr>
+  ${notesRow}
+</table>
+
+<div class="footer">
+  This is a computer-generated credit note — Mauli Enterprises
+</div>
+
+<script>window.onload=function(){window.print();}<\/script>
+</body>
+</html>`;
+
+  const win = window.open('', '_blank');
+  if (!win) return toast('Pop-up blocked — please allow pop-ups and try again.', 'error');
+  win.document.write(html);
+  win.document.close();
 }
 
 // ============================================================
