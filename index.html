@@ -4136,7 +4136,7 @@ function printLedgerStatement() {
     if (invPayments.length > 0) {
       paymentDate = fmtDate(invPayments[0].date);
     } else if (invCreditNotes.length > 0) {
-      paymentDate = '<span style="color:#7c3aed;font-weight:600;font-size:0.78em">Credit Note</span>';
+      paymentDate = '<span style="color:#ff7034">Credit Note</span>';
     } else {
       paymentDate = '—';
     }
