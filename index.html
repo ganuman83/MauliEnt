@@ -560,6 +560,9 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         </div>
       </div>
       <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
+        <select class="filter-btn" id="exp-fy-filter" onchange="renderExpenses()" style="min-width:140px;font-weight:600;color:var(--accent);border-color:var(--accent)">
+          <option value="all">All Years</option>
+        </select>
         <input class="search-input" placeholder="Search expenses..." id="exp-search" oninput="renderExpenses()" style="min-width:160px">
         <select class="filter-btn" id="exp-cat-filter" onchange="renderExpenses()" style="min-width:140px">
           <option value="">All Categories</option>
@@ -1363,24 +1366,34 @@ async function save(key) {
 // Firestore float64 storage can cause drift on large timestamp-based IDs
 // (e.g. customerId 1775918938303 may come back as 1775918938303.1707).
 function normalizeIds() {
+  // Customers & Invoices use plain Date.now() IDs — safe to round away float drift.
   DB.customers.forEach(c => { if (c.id != null) c.id = Math.round(parseFloat(c.id)); });
   DB.invoices.forEach(i => {
     if (i.id != null)         i.id         = Math.round(parseFloat(i.id));
     if (i.customerId != null) i.customerId = Math.round(parseFloat(i.customerId));
   });
+
+  // Payments use uniqueId() = Date.now()*1000 + seq, which produces values like
+  // 1776059976810183.  Supabase float8 drifts these to 1776059976810.0183 —
+  // rounding them to integers collapses multiple distinct entries to the same value
+  // and causes data loss on upsert.  Store them as-is (floating point string) and
+  // only normalise the FK columns that ARE plain Date.now() timestamps.
   DB.payments.forEach(p => {
-    if (p.id != null)         p.id         = Math.round(parseFloat(p.id));
     if (p.customerId != null) p.customerId = Math.round(parseFloat(p.customerId));
     if (p.invoiceId  != null) p.invoiceId  = Math.round(parseFloat(p.invoiceId));
+    // p.id intentionally NOT rounded — see comment above
   });
+
+  // CreditNotes have the same risk as payments (id may be uniqueId() or Date.now()).
+  // Normalise FK references only; leave primary id alone.
   (DB.creditNotes || []).forEach(cn => {
-    if (cn.id != null)         cn.id         = Math.round(parseFloat(cn.id));
     if (cn.customerId != null) cn.customerId = Math.round(parseFloat(cn.customerId));
     if (cn.invoiceId  != null) cn.invoiceId  = Math.round(parseFloat(cn.invoiceId));
+    // cn.id intentionally NOT rounded
   });
-  (DB.expenses || []).forEach(e => {
-    if (e.id != null) e.id = Math.round(parseFloat(e.id));
-  });
+
+  // Expenses: same caution — id left as-is.
+  // (No FK columns to normalise in expenses.)
 }
 
 async function load() {
@@ -4485,17 +4498,21 @@ function populateFYFilter(selectId, dates) {
   const fySet = new Set();
   dates.forEach(d => { try { if (d) fySet.add(getFYTag(d)); } catch(e) {} });
   const fyList = Array.from(fySet).sort().reverse();
-  const prev = sel.value;
+  const prev = sel.value; // capture before rebuilding innerHTML
   sel.innerHTML = '<option value="all">All Years</option>' +
     fyList.map(fy => {
       const label = 'F.Y. 20' + fy.slice(0,2) + '-' + fy.slice(2);
       return `<option value="${fy}">${label}</option>`;
     }).join('');
-  const currentFY = getFYTag(new Date().toISOString());
-  // Restore previous selection if valid; else pick current FY; else all
-  if (fyList.includes(prev)) sel.value = prev;
-  else if (fyList.includes(currentFY)) sel.value = currentFY;
-  else sel.value = 'all';
+  // Restore previous selection: if user had picked a specific FY or "All Years" keep it;
+  // on first render (prev is empty string from static HTML) default to "all"
+  if (prev === 'all' || prev === '') {
+    sel.value = 'all';
+  } else if (fyList.includes(prev)) {
+    sel.value = prev;
+  } else {
+    sel.value = 'all';
+  }
 }
 
 function getNextReceiptNo(dateStr) {
@@ -5307,6 +5324,9 @@ function exportExpenses() {
 }
 
 function renderExpenses() {
+  // Populate FY dropdown from expense dates
+  populateFYFilter('exp-fy-filter', (DB.expenses || []).map(e => e.date));
+  const selectedFY = document.getElementById('exp-fy-filter')?.value || 'all';
   const search   = document.getElementById('exp-search')?.value.toLowerCase() || '';
   const catF     = document.getElementById('exp-cat-filter')?.value || '';
   const modeF    = document.getElementById('exp-mode-filter')?.value || '';
@@ -5317,11 +5337,15 @@ function renderExpenses() {
 
   const all = DB.expenses || [];
 
-  // Update stats
+  // Update stats — always show all-time totals
   document.getElementById('exp-stat-count').textContent = all.length;
   document.getElementById('exp-stat-total').textContent = '₹' + fmt(all.reduce((s,e) => s + parseFloat(e.amount||0), 0));
 
   let list = all.filter(e => {
+    // FY filter
+    if (selectedFY !== 'all') {
+      try { if (getFYTag(e.date) !== selectedFY) return false; } catch(ex) { return false; }
+    }
     const textMatch = [e.category, e.description, e.by, e.mode].join(' ').toLowerCase().includes(search);
     const catMatch  = !catF   || e.category === catF;
     const modeMatch = !modeF  || e.mode === modeF;
