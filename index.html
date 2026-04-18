@@ -382,7 +382,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <div class="section-title">📅 Year-wise Summary</div>
         </div>
         <div class="table-wrap"><table>
-          <thead><tr><th>Financial Year</th><th>Total Invoiced</th><th>Received</th><th>Outstanding</th></tr></thead>
+          <thead><tr><th>Financial Year</th><th>Total Invoiced</th><th>Received</th><th>FY Outstanding</th><th>Cumulative Outstanding</th></tr></thead>
           <tbody id="dash-yearwise"></tbody>
         </table></div>
       </div>
@@ -1417,8 +1417,20 @@ async function load() {
         if (!data || data.length < PAGE) break; // last page
         from += PAGE;
       }
+      // Re-assign fresh integer IDs to any float-id rows so Supabase numeric precision
+      // loss doesn't cause distinct rows to appear identical after JSON parsing.
+      // This is safe because we always delete by groupId, never by id array.
+      let _idSeqLocal = 0;
+      const _floatIdBase = Date.now() * 10 + 1;
       const seen = new Set();
-      DB[key] = allRows.filter(row => {
+      DB[key] = allRows.map(row => {
+        // If id is a non-integer float, it came from the old ID generation scheme.
+        // Re-assign a unique integer ID at load time to prevent collision.
+        if (typeof row.id === 'number' && row.id !== Math.floor(row.id)) {
+          return { ...row, id: _floatIdBase + (++_idSeqLocal) };
+        }
+        return row;
+      }).filter(row => {
         const k = String(row.id);
         if (seen.has(k)) return false;
         seen.add(k);
@@ -3381,15 +3393,17 @@ function renderDashboard() {
 
   // ── Year-wise summary table ──
   const fySet = new Set();
-  DB.invoices.forEach(i => { try { fySet.add(getFYTag(i.date)); } catch(e) {} });
+  DB.invoices.forEach(i      => { try { fySet.add(getFYTag(i.date)); } catch(e) {} });
+  DB.payments.forEach(p      => { try { fySet.add(getFYTag(p.date)); } catch(e) {} });
+  (DB.creditNotes || []).forEach(cn => { try { fySet.add(getFYTag(cn.date)); } catch(e) {} });
   const fyList = Array.from(fySet).sort().reverse(); // newest first
 
   const yearTbody = document.getElementById('dash-yearwise');
   if (yearTbody) {
     if (!fyList.length) {
-      yearTbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">No invoice data yet.</td></tr>`;
+      yearTbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No invoice data yet.</td></tr>`;
     } else {
-      yearTbody.innerHTML = fyList.map(fy => {
+      const fyListData = fyList.map(fy => {
         const label = 'F.Y. 20' + fy.slice(0,2) + '-' + fy.slice(2);
         const fyInvs = DB.invoices.filter(i => { try { return getFYTag(i.date) === fy; } catch(e) { return false; } });
         const fyPays = DB.payments.filter(p => {
@@ -3414,11 +3428,24 @@ function renderDashboard() {
         const bracketStr = bracketParts.length
           ? ` <span style="font-size:0.80em;color:var(--muted)">(incl. ${bracketParts.join(', ')})</span>`
           : '';
+        return { label, invAmt, rcvAmt, bracketStr, outAmt };
+      });
+
+      // Compute cumulative outstanding (running total from oldest FY to newest)
+      const fyRows = fyListData.slice().reverse(); // oldest first for cumulation
+      let cumulative = 0;
+      const fyRowsWithCumul = fyRows.map(row => {
+        cumulative += row.outAmt;
+        return { ...row, cumulOut: cumulative };
+      }).reverse(); // back to newest first for display
+
+      yearTbody.innerHTML = fyRowsWithCumul.map(({ label, invAmt, rcvAmt, bracketStr, outAmt, cumulOut }) => {
         return `<tr>
           <td><strong>${label}</strong></td>
           <td>₹${fmt(invAmt)}</td>
           <td style="color:var(--success)">₹${fmt(rcvAmt)}${bracketStr}</td>
           <td style="color:${outAmt > 0 ? 'var(--danger)' : 'var(--success)'}">₹${fmt(outAmt)}</td>
+          <td style="color:${cumulOut > 0 ? 'var(--danger)' : 'var(--success)'}"><strong>₹${fmt(cumulOut)}</strong></td>
         </tr>`;
       }).join('');
     }
