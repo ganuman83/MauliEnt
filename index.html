@@ -560,6 +560,9 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         </div>
       </div>
       <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
+        <select class="filter-btn" id="exp-fy-filter" onchange="renderExpenses()" style="min-width:140px;font-weight:600;color:var(--accent);border-color:var(--accent)">
+          <option value="all">All Years</option>
+        </select>
         <input class="search-input" placeholder="Search expenses..." id="exp-search" oninput="renderExpenses()" style="min-width:160px">
         <select class="filter-btn" id="exp-cat-filter" onchange="renderExpenses()" style="min-width:140px">
           <option value="">All Categories</option>
@@ -5307,6 +5310,9 @@ function exportExpenses() {
 }
 
 function renderExpenses() {
+  // Populate FY dropdown from expense dates
+  populateFYFilter('exp-fy-filter', (DB.expenses || []).map(e => e.date));
+  const selectedFY = document.getElementById('exp-fy-filter')?.value || 'all';
   const search   = document.getElementById('exp-search')?.value.toLowerCase() || '';
   const catF     = document.getElementById('exp-cat-filter')?.value || '';
   const modeF    = document.getElementById('exp-mode-filter')?.value || '';
@@ -5317,11 +5323,15 @@ function renderExpenses() {
 
   const all = DB.expenses || [];
 
-  // Update stats
+  // Update stats — always show all-time totals
   document.getElementById('exp-stat-count').textContent = all.length;
   document.getElementById('exp-stat-total').textContent = '₹' + fmt(all.reduce((s,e) => s + parseFloat(e.amount||0), 0));
 
   let list = all.filter(e => {
+    // FY filter
+    if (selectedFY !== 'all') {
+      try { if (getFYTag(e.date) !== selectedFY) return false; } catch(ex) { return false; }
+    }
     const textMatch = [e.category, e.description, e.by, e.mode].join(' ').toLowerCase().includes(search);
     const catMatch  = !catF   || e.category === catF;
     const modeMatch = !modeF  || e.mode === modeF;
