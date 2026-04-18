@@ -3863,6 +3863,19 @@ async function restoreBackup(input) {
     const payments = await readJSON('payments.json');
     const log = await readJSON('activity_log.json');
 
+    // Stop realtime listeners during restore to prevent mid-save re-fetch from overwriting data
+    stopRealtimeListeners();
+
+    // ── FIX: DELETE existing rows before saving backup data.
+    // save() uses upsert which only adds/updates — rows absent from the backup JSON
+    // would survive in Supabase and corrupt the dataset after the next page refresh.
+    if (_db) {
+      for (const tbl of ['customers', 'invoices', 'payments']) {
+        const { error } = await _db.from(tbl).delete().neq('id', 0);
+        if (error) console.warn(`Clear ${tbl} error:`, error.message);
+      }
+    }
+
     if (customers) { DB.customers = customers; await save('customers'); }
     if (invoices)  { DB.invoices  = invoices;  await save('invoices'); }
     if (payments)  {
@@ -3879,10 +3892,14 @@ async function restoreBackup(input) {
     DB.backupHistory.unshift({ name: file.name, date: new Date().toISOString(), type: 'restore' });
     save('backupHistory');
 
+    // Restart listeners AFTER all saves complete
+    startRealtimeListeners();
+
     renderAll();
     if (document.getElementById('tab-backup')?.classList.contains('active')) renderBackupHistory();
     toast('✅ Backup restored successfully!', 'success');
   } catch(e) {
+    startRealtimeListeners(); // always restart even on failure
     toast('❌ Failed to restore backup: ' + e.message, 'error');
   }
   input.value = '';
@@ -3912,25 +3929,26 @@ async function restoreSingleJSON(input, collectionKey) {
 
     DB[collectionKey] = data;
 
-    // Large collections (>400 records) need chunked save, not single save()
-    if (data.length > 400) {
+    if (_db) {
       updateSyncStatus('syncing');
+
+      // ── FIX: DELETE all existing rows first so stale records don't survive the restore.
+      // upsert alone only adds/updates; rows present in Supabase but absent from the
+      // backup JSON would remain, corrupting the dataset after the next page refresh.
+      const { error: delError } = await _db.from(collectionKey).delete().neq('id', 0);
+      if (delError) throw new Error('Clear existing data failed: ' + delError.message);
+
+      // Chunked UPSERT — handles both small and large collections uniformly
       const CHUNK = 400;
       for (let i = 0; i < data.length; i += CHUNK) {
         const chunk = data.slice(i, i + CHUNK);
-        if (_db) {
-          const { error } = await _db.from(collectionKey).upsert(chunk, { onConflict: 'id' });
-          if (error) throw new Error(error.message);
-        }
+        const { error } = await _db.from(collectionKey).upsert(chunk, { onConflict: 'id' });
+        if (error) throw new Error(error.message);
       }
+
       try { localStorage.setItem('mauli_' + collectionKey, JSON.stringify(data)); } catch(e) {}
       updateSyncStatus('synced');
-    } else {
-      await save(collectionKey);
     }
-
-    // Restart realtime listeners after import completes
-    startRealtimeListeners();
 
     addLog('edit', `Single JSON imported for ${label}: ${file.name} (${data.length} records)`);
     await save('log');
@@ -3938,6 +3956,12 @@ async function restoreSingleJSON(input, collectionKey) {
     DB.backupHistory.unshift({ name: file.name, date: new Date().toISOString(), type: 'restore' });
     if (DB.backupHistory.length > 20) DB.backupHistory = DB.backupHistory.slice(0, 20);
     save('backupHistory');
+
+    // ── FIX: Restart realtime listeners AFTER all saves are complete.
+    // Previously listeners were restarted before save('log') and save('backupHistory'),
+    // whose Supabase writes triggered the realtime callback, which re-fetched Supabase
+    // and overwrote DB[collectionKey] with the pre-restore data still in Supabase.
+    startRealtimeListeners();
 
     renderAll();
     if (document.getElementById('tab-backup')?.classList.contains('active')) renderBackupHistory();
