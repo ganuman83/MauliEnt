@@ -1375,10 +1375,19 @@ async function load() {
     updateSyncStatus('syncing');
 
     for (const key of FS_COLLECTIONS) {
-      const { data, error } = await _db.from(key).select('*');
-      if (error) throw new Error(`Load ${key}: ${error.message}`);
+      // Paginate to bypass Supabase's default 1000-row limit
+      const PAGE = 1000;
+      let allRows = [];
+      let from = 0;
+      while (true) {
+        const { data, error } = await _db.from(key).select('*').range(from, from + PAGE - 1);
+        if (error) throw new Error(`Load ${key}: ${error.message}`);
+        if (data && data.length > 0) allRows = allRows.concat(data);
+        if (!data || data.length < PAGE) break; // last page
+        from += PAGE;
+      }
       const seen = new Set();
-      DB[key] = (data || []).filter(row => {
+      DB[key] = allRows.filter(row => {
         const k = String(row.id);
         if (seen.has(k)) return false;
         seen.add(k);
@@ -1467,10 +1476,19 @@ function startRealtimeListeners() {
     const channel = _db
       .channel('table-changes-' + key)
       .on('postgres_changes', { event: '*', schema: 'public', table: key }, async () => {
-        // Re-fetch the full table on any change (simpler & safer than patching)
-        const { data, error } = await _db.from(key).select('*');
-        if (!error && currentUser) {
-          DB[key] = data || [];
+        // Re-fetch the full table on any change — paginated to bypass 1000-row limit
+        const PAGE = 1000;
+        let allRows = [];
+        let from = 0;
+        while (true) {
+          const { data, error } = await _db.from(key).select('*').range(from, from + PAGE - 1);
+          if (error || !currentUser) break;
+          if (data && data.length > 0) allRows = allRows.concat(data);
+          if (!data || data.length < PAGE) break;
+          from += PAGE;
+        }
+        if (currentUser && allRows.length > 0) {
+          DB[key] = allRows;
           normalizeIds();
           renderAll();
           updateSyncStatus('synced');
