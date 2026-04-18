@@ -1215,6 +1215,16 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 // ============================================================
 // DATA STORE
 // ============================================================
+// ============================================================
+// UNIQUE ID GENERATOR — prevents duplicate IDs on fast saves
+// Uses a monotonic counter suffix to guarantee uniqueness
+// even when multiple entries are created in the same millisecond.
+// ============================================================
+let _idSeq = 0;
+function uniqueId() {
+  return Date.now() * 1000 + ((++_idSeq) % 1000);
+}
+
 const DB = {
   customers: [],
   invoices: [],
@@ -2056,19 +2066,24 @@ async function saveCustomer() {
     const idx = DB.customers.findIndex(c => c.id === editingCustomerId);
     const oldName = DB.customers[idx]?.name;
     DB.customers[idx] = { ...DB.customers[idx], ...data };
-    addLog('edit', `Edited customer: ${name}${oldName && oldName !== name ? ` (was: ${oldName})` : ''} | Total customers: ${DB.customers.length}`);
+    await addLog('edit', `Edited customer: ${name}${oldName && oldName !== name ? ` (was: ${oldName})` : ''} | Total customers: ${DB.customers.length}`);
     toast('Customer updated!', 'success');
   } else {
     data.id = Date.now();
     DB.customers.push(data);
-    addLog('create', `Added customer: ${name} | Total customers: ${DB.customers.length}`);
+    await addLog('create', `Added customer: ${name} | Total customers: ${DB.customers.length}`);
     toast('Customer added!', 'success');
   }
 
-  save('customers');
-  closeModal('modal-customer');
-  renderCustomers();
-  updateCustomerDropdowns();
+  try {
+    await save('customers');
+    closeModal('modal-customer');
+    renderCustomers();
+    updateCustomerDropdowns();
+  } catch(e) {
+    btnGuardReset('btn-save-customer');
+    toast('❌ Failed to save customer: ' + e.message, 'error');
+  }
 }
 
 async function deleteCustomer(id) {
@@ -2087,7 +2102,7 @@ async function deleteCustomer(id) {
   DB.payments    = DB.payments.filter(p => p.customerId !== id);
   DB.creditNotes = (DB.creditNotes||[]).filter(cn => cn.customerId !== id);
   DB.customers   = DB.customers.filter(c => c.id !== id);
-  addLog('delete', `Deleted customer: ${c?.name}`);
+  await addLog('delete', `Deleted customer: ${c?.name}`);
   toast('Customer deleted.', 'error');
   renderAll();
 }
@@ -2103,7 +2118,7 @@ function getCustomerStatus(id) {
   const today = new Date(); today.setHours(0,0,0,0);
   const hasOverdue = invs.some(i => {
     const bal = parseFloat(i.amount) - getPaidAmount(i.id);
-    return bal > 0 && new Date(i.dueDate) < today;
+    return bal > 0 && parseLocalDate(i.dueDate) < today;
   });
   if (hasOverdue) return 'overdue';
   const hasPartial = invs.some(i => {
@@ -2242,21 +2257,26 @@ async function saveInvoice() {
     DB.invoices[idx] = { ...DB.invoices[idx], ...data };
     let logMsg = `${wasPaid ? 'Correction' : 'Edited'} invoice ${invNo} (${c?.name || 'Customer #' + customerId})`;
     if (Math.abs(oldAmt - amount) > 0.01) logMsg += ` | Amount: ₹${fmt(oldAmt)} → ₹${fmt(amount)}`;
-    addLog(wasPaid ? 'correction' : 'edit', logMsg);
+    await addLog(wasPaid ? 'correction' : 'edit', logMsg);
     toast('Invoice updated!', 'success');
   } else {
     data.id = Date.now();
     DB.invoices.push(data);
     const c = DB.customers.find(c => String(c.id) === String(Math.round(parseFloat(customerId)))) || DB.customers.find(c => String(c.id) === String(customerId));
-    addLog('create', `Created invoice ${invNo} ₹${fmt(amount)} for ${c?.name || 'Customer #' + customerId} | Total invoices: ${DB.invoices.length}`);
+    await addLog('create', `Created invoice ${invNo} ₹${fmt(amount)} for ${c?.name || 'Customer #' + customerId} | Total invoices: ${DB.invoices.length}`);
     toast('Invoice saved!', 'success');
   }
 
-  save('invoices');
-  closeModal('modal-invoice');
-  document.getElementById('dup-global').style.display = 'none';
-  renderInvoices();
-  renderDashboard();
+  try {
+    await save('invoices');
+    closeModal('modal-invoice');
+    document.getElementById('dup-global').style.display = 'none';
+    renderInvoices();
+    renderDashboard();
+  } catch(e) {
+    btnGuardReset('btn-save-invoice');
+    toast('❌ Failed to save invoice: ' + e.message, 'error');
+  }
 }
 
 async function deleteInvoice(id) {
@@ -2270,7 +2290,7 @@ async function deleteInvoice(id) {
   DB.invoices    = DB.invoices.filter(i => i.id !== id);
   DB.payments    = DB.payments.filter(p => p.invoiceId !== id);
   DB.creditNotes = (DB.creditNotes||[]).filter(cn => cn.invoiceId !== id);
-  addLog('delete', `Deleted invoice ${inv?.invNo}`);
+  await addLog('delete', `Deleted invoice ${inv?.invNo}`);
   toast('Invoice deleted.', 'error');
   renderInvoices();
   renderDashboard();
@@ -2278,24 +2298,49 @@ async function deleteInvoice(id) {
 
 function getPaidAmount(invoiceId) {
   const invIdStr = String(invoiceId);
+  // Exclude Cancelled (reversed) and Cash Discount entries separately.
+  // Cash Discount entries are stored as separate payment rows but also counted
+  // explicitly below — so main filter excludes them to prevent double-counting.
   const payments = DB.payments
-    .filter(p => String(p.invoiceId) === invIdStr && p.method !== 'Cancelled')
+    .filter(p => String(p.invoiceId) === invIdStr && p.method !== 'Cancelled' && p.method !== 'Cash Discount')
+    .reduce((s, p) => s + parseFloat(p.amount), 0);
+  const discounts = DB.payments
+    .filter(p => String(p.invoiceId) === invIdStr && p.method === 'Cash Discount')
     .reduce((s, p) => s + parseFloat(p.amount), 0);
   const credits = (DB.creditNotes || [])
     .filter(cn => String(cn.invoiceId) === invIdStr)
     .reduce((s, cn) => s + parseFloat(cn.amount), 0);
-  return payments + credits;
+  return payments + discounts + credits;
 }
 
 function getInvoiceStatus(inv) {
   const paid = getPaidAmount(inv.id);
   const amount = parseFloat(inv.amount);
   const today = new Date(); today.setHours(0,0,0,0);
-  const due = new Date(inv.dueDate);
+  // Parse dueDate as local date (not UTC) to avoid IST timezone shift
+  // new Date("yyyy-MM-dd") parses as UTC midnight which in IST (+5:30)
+  // falls on the previous calendar day, causing premature overdue status.
+  let due;
+  if (inv.dueDate && /^\d{4}-\d{2}-\d{2}$/.test(inv.dueDate)) {
+    const [y, m, d] = inv.dueDate.split('-').map(Number);
+    due = new Date(y, m - 1, d);
+  } else {
+    due = new Date(inv.dueDate);
+  }
   if (paid >= amount) return 'paid';
   if (due < today) return 'overdue';
   if (paid > 0) return 'partial';
   return 'pending';
+}
+
+// Parse a yyyy-MM-dd string as LOCAL date (avoids UTC midnight → IST day-shift bug)
+function parseLocalDate(dateStr) {
+  if (!dateStr) return new Date(NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+  return new Date(dateStr);
 }
 
 function initInvMonthFilter() { /* no-op — using from/to date range now */ }
@@ -2651,17 +2696,17 @@ async function savePayment() {
     invNos.push(inv?.invNo || '—');
     // Push actual payment entry FIRST (before Cash Discount) so method display is correct
     if (alloc.adj > 0) {
-      DB.payments.push({ id: Date.now() * 1000 + Math.floor(Math.random() * 999), groupId, customerId, invoiceId: alloc.invId, amount: alloc.adj, date, method, ref, notes, cashDisc: alloc.disc, totalReceived });
+      DB.payments.push({ id: uniqueId(), groupId, customerId, invoiceId: alloc.invId, amount: alloc.adj, date, method, ref, notes, cashDisc: alloc.disc, totalReceived });
     }
     // Cash Discount entries pushed AFTER main payment entry
     if (alloc.disc > 0 && alloc.adj === 0) {
-      DB.payments.push({ id: Date.now() * 1000 + Math.floor(Math.random() * 999), groupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: 'Cash Discount', cashDisc: alloc.disc, totalReceived });
+      DB.payments.push({ id: uniqueId(), groupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: 'Cash Discount', cashDisc: alloc.disc, totalReceived });
     }
     if (alloc.disc > 0 && alloc.adj > 0) {
-      DB.payments.push({ id: Date.now() * 1000 + Math.floor(Math.random() * 999), groupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: `Cash Discount on ${inv?.invNo}`, cashDisc: alloc.disc, totalReceived });
+      DB.payments.push({ id: uniqueId(), groupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: `Cash Discount on ${inv?.invNo}`, cashDisc: alloc.disc, totalReceived });
     }
   }
-  addLog('create', `Payment ₹${fmt(totalReceived)} [${method}] for invoices ${invNos.join(', ')} (${c?.name}) | Total payment entries: ${DB.payments.length}`);
+  await addLog('create', `Payment ₹${fmt(totalReceived)} [${method}] for invoices ${invNos.join(', ')} (${c?.name}) | Total payment entries: ${DB.payments.length}`);
 
   // Auto-assign receipt number immediately on save (FY-aware)
   const receiptNo = getNextReceiptNo(date);
@@ -2669,12 +2714,17 @@ async function savePayment() {
     if (x.groupId === groupId) DB.payments[i].receiptNo = receiptNo;
   });
 
-  await save('payments');
-  toast('Payment recorded!', 'success');
-  closeModal('modal-payment');
-  renderPayments();
-  renderInvoices();
-  renderDashboard();
+  try {
+    await save('payments');
+    toast('Payment recorded!', 'success');
+    closeModal('modal-payment');
+    renderPayments();
+    renderInvoices();
+    renderDashboard();
+  } catch(e) {
+    btnGuardReset('btn-save-payment');
+    toast('❌ Failed to save payment: ' + e.message, 'error');
+  }
 }
 
 // ---- Revise Payment (Check Bounce / Other) ----
@@ -2738,19 +2788,24 @@ async function saveRevisePayment() {
     const idx = DB.invoices.findIndex(i => i.id === inv.id);
     if (idx !== -1) {
       DB.invoices[idx].amount = (parseFloat(DB.invoices[idx].amount) + chargeAmt).toFixed(2);
-      addLog('correction', `Invoice ${inv.invNo} amount increased by ₹${fmt(chargeAmt)} due to ${reason} penalty`);
+      await addLog('correction', `Invoice ${inv.invNo} amount increased by ₹${fmt(chargeAmt)} due to ${reason} penalty`);
       await save('invoices');
     }
   }
 
-  await save('payments');
-  addLog('correction', `Payment revised for ${inv?.invNo} (${c?.name}) — ${reason}${notes ? ': ' + notes : ''}${applyCharge ? ' | Charge ₹' + fmt(chargeAmt) : ''}`);
-  toast('Payment revised! Invoice balance restored.', 'info');
-  closeModal('modal-revise-payment');
-  renderPayments();
-  renderInvoices();
-  renderOverdue();
-  renderDashboard();
+  try {
+    await save('payments');
+    await addLog('correction', `Payment revised for ${inv?.invNo} (${c?.name}) — ${reason}${notes ? ': ' + notes : ''}${applyCharge ? ' | Charge ₹' + fmt(chargeAmt) : ''}`);
+    toast('Payment revised! Invoice balance restored.', 'info');
+    closeModal('modal-revise-payment');
+    renderPayments();
+    renderInvoices();
+    renderOverdue();
+    renderDashboard();
+  } catch(e) {
+    btnGuardReset('btn-save-revise-payment');
+    toast('❌ Failed to revise payment: ' + e.message, 'error');
+  }
 }
 
 function onPayMethodChange() {} // kept as stub for compatibility
@@ -3000,13 +3055,18 @@ async function saveCreditNote() {
   const c = DB.customers.find(c => c.id === customerId);
   const cn = { id: Date.now(), customerId, invoiceId, cnNumber, date, amount, reason, notes };
   DB.creditNotes.push(cn);
-  save('creditNotes');
-  addLog('create', `Credit Note ${cnNumber} ₹${fmt(amount)} [${reason}] against invoice ${inv?.invNo} (${c?.name}) | Total credit notes: ${DB.creditNotes.length}`);
-  toast('Credit Note saved!', 'success');
-  closeModal('modal-creditnote');
-  renderCreditNotes();
-  renderInvoices();
-  renderDashboard();
+  try {
+    await save('creditNotes');
+    await addLog('create', `Credit Note ${cnNumber} ₹${fmt(amount)} [${reason}] against invoice ${inv?.invNo} (${c?.name}) | Total credit notes: ${DB.creditNotes.length}`);
+    toast('Credit Note saved!', 'success');
+    closeModal('modal-creditnote');
+    renderCreditNotes();
+    renderInvoices();
+    renderDashboard();
+  } catch(e) {
+    btnGuardReset('btn-save-creditnote');
+    toast('❌ Failed to save credit note: ' + e.message, 'error');
+  }
 }
 
 async function deleteCreditNote(id) {
@@ -3014,7 +3074,7 @@ async function deleteCreditNote(id) {
   if (!await confirmDialog({ title: 'Delete Credit Note', msg: `Permanently delete Credit Note ${cn?.cnNumber}?\n\nThis action cannot be undone.`, type: 'danger', okLabel: 'Delete' })) return;
   await deleteDoc('creditNotes', id);
   DB.creditNotes = DB.creditNotes.filter(c => c.id !== id);
-  addLog('delete', `Deleted Credit Note ${cn?.cnNumber}`);
+  await addLog('delete', `Deleted Credit Note ${cn?.cnNumber}`);
   toast('Credit Note deleted.', 'error');
   renderCreditNotes();
   renderInvoices();
@@ -3160,8 +3220,8 @@ function renderOverdue() {
   const today = new Date(); today.setHours(0,0,0,0);
   const list = DB.invoices.filter(inv => {
     const bal = parseFloat(inv.amount) - getPaidAmount(inv.id);
-    return bal > 0 && new Date(inv.dueDate) < today;
-  }).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate)); // oldest due date first = most overdue on top
+    return bal > 0 && parseLocalDate(inv.dueDate) < today;
+  }).sort((a, b) => parseLocalDate(a.dueDate) - parseLocalDate(b.dueDate)); // oldest due date first = most overdue on top
 
   const alert = document.getElementById('overdue-alert');
   alert.style.display = list.length ? 'flex' : 'none';
@@ -3175,7 +3235,7 @@ function renderOverdue() {
   tbody.innerHTML = list.map(inv => {
     const c = DB.customers.find(c => String(c.id) === String(Math.round(parseFloat(inv.customerId)))) || DB.customers.find(c => String(c.id) === String(inv.customerId));
     const bal = parseFloat(inv.amount) - getPaidAmount(inv.id);
-    const daysOver = Math.floor((today - new Date(inv.dueDate)) / 86400000);
+    const daysOver = Math.floor((today - parseLocalDate(inv.dueDate)) / 86400000);
     return `<tr>
       <td><strong>${inv.invNo}</strong></td>
       <td>${c?.name || '—'}</td>
@@ -3228,13 +3288,13 @@ function renderDashboard() {
   const today = new Date(); today.setHours(0,0,0,0);
   const overdueList = DB.invoices.filter(inv => {
     const bal = parseFloat(inv.amount) - getPaidAmount(inv.id);
-    return bal > 0 && new Date(inv.dueDate) < today;
+    return bal > 0 && parseLocalDate(inv.dueDate) < today;
   }).slice(0,5);
   document.getElementById('dash-overdue').innerHTML = overdueList.length
     ? overdueList.map(inv => {
         const c = DB.customers.find(c => String(c.id) === String(Math.round(parseFloat(inv.customerId)))) || DB.customers.find(c => String(c.id) === String(inv.customerId));
         const bal = parseFloat(inv.amount) - getPaidAmount(inv.id);
-        const days = Math.floor((today - new Date(inv.dueDate)) / 86400000);
+        const days = Math.floor((today - parseLocalDate(inv.dueDate)) / 86400000);
         return `<tr><td>${c?.name||'—'}</td><td style="color:var(--danger)">${days} days</td><td style="color:var(--danger)">₹${fmt(bal)}</td></tr>`;
       }).join('')
     : `<tr><td colspan="3" style="text-align:center;color:var(--muted);padding:20px">No overdue invoices. 🎉</td></tr>`;
@@ -3544,14 +3604,14 @@ async function downloadFullBackup() {
   const today = new Date(); today.setHours(0,0,0,0);
   const overdueSummary = DB.invoices.filter(inv => {
     const bal = parseFloat(inv.amount) - getPaidAmount(inv.id);
-    return bal > 0 && new Date(inv.dueDate) < today;
+    return bal > 0 && parseLocalDate(inv.dueDate) < today;
   }).map(inv => {
     const c = DB.customers.find(c => c.id === inv.customerId);
     return {
       invNo: inv.invNo,
       customer: c?.name,
       dueDate: inv.dueDate,
-      daysOverdue: Math.floor((today - new Date(inv.dueDate)) / 86400000),
+      daysOverdue: Math.floor((today - parseLocalDate(inv.dueDate)) / 86400000),
       balance: parseFloat(inv.amount) - getPaidAmount(inv.id)
     };
   });
@@ -3638,8 +3698,13 @@ async function restoreBackup(input) {
 
     if (customers) { DB.customers = customers; await save('customers'); }
     if (invoices)  { DB.invoices  = invoices;  await save('invoices'); }
-    if (payments)  { DB.payments  = payments;  await save('payments'); }
-    if (log)       { DB.log       = log; }
+    if (payments)  {
+      // Deduplicate by id before restoring — backup file may contain duplicates
+      const seen = new Set();
+      DB.payments = payments.filter(p => { const k = String(p.id); if (seen.has(k)) return false; seen.add(k); return true; });
+      await save('payments');
+    }
+    if (log)       { DB.log = log; }
 
     await addLog('edit', `Data restored from backup: ${file.name}`);
     await save('log');
@@ -3931,10 +3996,10 @@ function exportOverdueExcel() {
   const today = new Date(); today.setHours(0,0,0,0);
   const data = DB.invoices.filter(inv => {
     const bal = parseFloat(inv.amount) - getPaidAmount(inv.id);
-    return bal > 0 && new Date(inv.dueDate) < today;
+    return bal > 0 && parseLocalDate(inv.dueDate) < today;
   }).map(inv => {
     const c = DB.customers.find(c => c.id === inv.customerId);
-    return { InvoiceNo: inv.invNo, Customer: c?.name, Phone: c?.phone, DueDate: inv.dueDate, DaysOverdue: Math.floor((today - new Date(inv.dueDate))/86400000), Balance: parseFloat(inv.amount) - getPaidAmount(inv.id) };
+    return { InvoiceNo: inv.invNo, Customer: c?.name, Phone: c?.phone, DueDate: inv.dueDate, DaysOverdue: Math.floor((today - parseLocalDate(inv.dueDate))/86400000), Balance: parseFloat(inv.amount) - getPaidAmount(inv.id) };
   });
   exportXLSX(data, 'Overdue_MauliEnt');
 }
@@ -3964,10 +4029,20 @@ function fmtDate(d) { if (!d) return '—'; try { return new Date(d).toLocaleDat
 function fmtExcelDate(v) {
   if (!v) return today();
   if (typeof v === 'number') {
+    // Excel serial date number
     const d = new Date((v - 25569) * 86400 * 1000);
     return d.toISOString().split('T')[0];
   }
-  return String(v);
+  const s = String(v).trim();
+  // Already ISO format yyyy-MM-dd — return as-is
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  // Handle m/d/yyyy or mm/dd/yyyy (e.g. 7/14/2024)
+  const mdy = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (mdy) return mdy[3] + '-' + mdy[1].padStart(2,'0') + '-' + mdy[2].padStart(2,'0');
+  // Handle dd-mm-yyyy (e.g. 14-07-2024)
+  const dmy = s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if (dmy) return dmy[3] + '-' + dmy[2].padStart(2,'0') + '-' + dmy[1].padStart(2,'0');
+  return s;
 }
 
 function renderAll() {
@@ -4498,7 +4573,7 @@ async function deletePaymentGroup(paymentId, groupId) {
     }
   }
 
-  addLog('delete', `Deleted payment ${receiptLabel} ₹${fmt(rep.totalReceived || rep.amount)} (${rep.method}) for ${c?.name || '—'} / ${inv?.invNo || '—'}`);
+  await addLog('delete', `Deleted payment ${receiptLabel} ₹${fmt(rep.totalReceived || rep.amount)} (${rep.method}) for ${c?.name || '—'} / ${inv?.invNo || '—'}`);
   toast('Payment deleted.', 'error');
   renderPayments();
   renderInvoices();
@@ -4782,7 +4857,9 @@ async function saveEditPayment() {
   }
 
   // --- Rebuild entries ---
-  const newGroupId = _editPaymentGroupId || ('grp_' + Date.now());
+  // Always assign a groupId — even for previously single (no-group) payments.
+  // This ensures future edits can correctly locate and remove all entries.
+  const newGroupId = _editPaymentGroupId || ('grp_' + uniqueId());
   const c = DB.customers.find(cx => cx.id === customerId);
   const invNos = [];
 
@@ -4791,18 +4868,24 @@ async function saveEditPayment() {
     invNos.push(inv?.invNo || '—');
     // Push actual payment entry FIRST (before Cash Discount) so method display is correct
     if (alloc.adj > 0) {
-      DB.payments.push({ id: Date.now() + Math.random(), groupId: newGroupId, customerId, invoiceId: alloc.invId, amount: alloc.adj, date, method, ref, notes, cashDisc: alloc.disc, totalReceived, receiptNo: receiptNo || '' });
+      DB.payments.push({ id: uniqueId(), groupId: newGroupId, customerId, invoiceId: alloc.invId, amount: alloc.adj, date, method, ref, notes, cashDisc: alloc.disc, totalReceived, receiptNo: receiptNo || '' });
     }
     // Cash Discount entries pushed AFTER main payment entry
     if (alloc.disc > 0 && alloc.adj === 0) {
-      DB.payments.push({ id: Date.now() + Math.random(), groupId: newGroupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: 'Cash Discount', cashDisc: alloc.disc, totalReceived, receiptNo: receiptNo || '' });
+      DB.payments.push({ id: uniqueId(), groupId: newGroupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: 'Cash Discount', cashDisc: alloc.disc, totalReceived, receiptNo: receiptNo || '' });
     }
     if (alloc.disc > 0 && alloc.adj > 0) {
-      DB.payments.push({ id: Date.now() + Math.random(), groupId: newGroupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: `Cash Discount on ${inv?.invNo}`, cashDisc: alloc.disc, totalReceived, receiptNo: receiptNo || '' });
+      DB.payments.push({ id: uniqueId(), groupId: newGroupId, customerId, invoiceId: alloc.invId, amount: alloc.disc, date, method: 'Cash Discount', ref, notes: `Cash Discount on ${inv?.invNo}`, cashDisc: alloc.disc, totalReceived, receiptNo: receiptNo || '' });
     }
   }
 
-  await save('payments');
+  try {
+    await save('payments');
+  } catch(e) {
+    btnGuardReset('btn-save-edit-payment');
+    toast('❌ Failed to save payment: ' + e.message, 'error');
+    return;
+  }
 
   // --- Log with before/after ---
   const custChanged = String(Math.round(parseFloat(oldCustomerId))) !== String(customerId);
@@ -4811,7 +4894,7 @@ async function saveEditPayment() {
   if (custChanged) logMsg += ` | Customer: ${oldCust?.name || '?'} → ${newCust?.name || '?'}`;
   if (amtChanged)  logMsg += ` | Amount: ₹${fmt(oldTotal)} → ₹${fmt(totalReceived)}`;
   logMsg += ` | Invoices: ${invNos.join(', ')}`;
-  addLog('edit', logMsg);
+  await addLog('edit', logMsg);
 
   toast('Payment updated!', 'success');
   closeModal('modal-edit-payment');
@@ -4832,7 +4915,6 @@ function openEditCNModal(id) {
   if (!cn) return toast('Credit Note not found.', 'error');
 
   _editCNCustomerId = cn.customerId; // store for saveEditCN since dropdown is disabled
-  if (!cn) return toast('Credit Note not found.', 'error');
 
   // Populate customer dropdown (editable)
   const cSel = document.getElementById('ecn-customer');
@@ -4920,7 +5002,6 @@ async function saveEditCN() {
   const inv     = DB.invoices.find(i => i.id === invoiceId);
 
   DB.creditNotes[idx] = { ...oldCN, customerId, invoiceId, cnNumber, date, amount, reason, notes };
-  await save('creditNotes');
 
   // Build descriptive log
   const custChanged = String(oldCN.customerId) !== String(customerId);
@@ -4930,13 +5011,19 @@ async function saveEditCN() {
   if (custChanged) logMsg += ` | Customer: ${oldCust?.name || '?'} → ${newCust?.name || '?'}`;
   if (invChanged)  logMsg += ` | Invoice changed → ${inv?.invNo || invoiceId}`;
   if (amtChanged)  logMsg += ` | Amount: ₹${fmt(parseFloat(oldCN.amount))} → ₹${fmt(amount)}`;
-  addLog('edit', logMsg);
 
-  toast('Credit Note updated!', 'success');
-  closeModal('modal-edit-creditnote');
-  renderCreditNotes();
-  renderInvoices();
-  renderDashboard();
+  try {
+    await save('creditNotes');
+    await addLog('edit', logMsg);
+    toast('Credit Note updated!', 'success');
+    closeModal('modal-edit-creditnote');
+    renderCreditNotes();
+    renderInvoices();
+    renderDashboard();
+  } catch(e) {
+    btnGuardReset('btn-save-edit-cn');
+    toast('❌ Failed to save credit note: ' + e.message, 'error');
+  }
 }
 
 // ============================================================
@@ -5004,19 +5091,24 @@ async function saveExpense() {
       DB.expenses[idx] = { ...DB.expenses[idx], category, date, amount, mode, by, description };
       let logMsg = `Edited expense: ${category} by ${by}`;
       if (Math.abs(oldAmt - amount) > 0.01) logMsg += ` | Amount: ₹${fmt(oldAmt)} → ₹${fmt(amount)}`;
-      addLog('edit', logMsg);
+      await addLog('edit', logMsg);
       toast('Expense updated!', 'success');
     }
   } else {
     const entry = { id: Date.now(), category, date, amount, mode, by, description };
     DB.expenses.push(entry);
-    addLog('create', `Added expense: ${category} ₹${fmt(amount)} by ${by} | Total expenses: ${DB.expenses.length}`);
+    await addLog('create', `Added expense: ${category} ₹${fmt(amount)} by ${by} | Total expenses: ${DB.expenses.length}`);
     toast('Expense saved!', 'success');
   }
 
-  await save('expenses');
-  closeModal('modal-expense');
-  renderExpenses();
+  try {
+    await save('expenses');
+    closeModal('modal-expense');
+    renderExpenses();
+  } catch(e) {
+    btnGuardReset('btn-save-expense');
+    toast('❌ Failed to save expense: ' + e.message, 'error');
+  }
 }
 
 async function deleteExpense(id) {
@@ -5024,7 +5116,7 @@ async function deleteExpense(id) {
   if (!await confirmDialog({ title: 'Delete Expense', msg: `Delete expense: ${e?.category} — ₹${fmt(e?.amount)}?\n\nThis action cannot be undone.`, type: 'danger', okLabel: 'Delete Expense' })) return;
   await deleteDoc('expenses', id);
   DB.expenses = DB.expenses.filter(x => x.id !== id);
-  addLog('delete', `Deleted expense: ${e?.category} ₹${fmt(e?.amount)}`);
+  await addLog('delete', `Deleted expense: ${e?.category} ₹${fmt(e?.amount)}`);
   toast('Expense deleted.', 'error');
   renderExpenses();
 }
