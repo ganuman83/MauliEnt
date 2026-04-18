@@ -1417,20 +1417,9 @@ async function load() {
         if (!data || data.length < PAGE) break; // last page
         from += PAGE;
       }
-      // Re-assign fresh integer IDs to any float-id rows so Supabase numeric precision
-      // loss doesn't cause distinct rows to appear identical after JSON parsing.
-      // This is safe because we always delete by groupId, never by id array.
-      let _idSeqLocal = 0;
-      const _floatIdBase = Date.now() * 10 + 1;
+      // Deduplicate by id (safeguard against upsert conflicts)
       const seen = new Set();
-      DB[key] = allRows.map(row => {
-        // If id is a non-integer float, it came from the old ID generation scheme.
-        // Re-assign a unique integer ID at load time to prevent collision.
-        if (typeof row.id === 'number' && row.id !== Math.floor(row.id)) {
-          return { ...row, id: _floatIdBase + (++_idSeqLocal) };
-        }
-        return row;
-      }).filter(row => {
+      DB[key] = allRows.filter(row => {
         const k = String(row.id);
         if (seen.has(k)) return false;
         seen.add(k);
