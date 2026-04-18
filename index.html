@@ -1478,9 +1478,8 @@ function startRealtimeListeners() {
       })
       .subscribe((status) => {
         if (status === 'SUBSCRIBED') updateSyncStatus('synced');
-        else if (status === 'CHANNEL_ERROR') updateSyncStatus('error');
-        // TIMED_OUT / CLOSED are transient reconnect states — Supabase auto-retries, don't show error
-        else if (status === 'TIMED_OUT' || status === 'CLOSED') updateSyncStatus('syncing');
+        // CHANNEL_ERROR, TIMED_OUT, CLOSED are all transient — Supabase auto-retries, show amber not red
+        else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') updateSyncStatus('syncing');
       });
     _unsubscribers.push(() => _db.removeChannel(channel));
   });
@@ -1704,9 +1703,27 @@ async function doLogin() {
   const password = document.getElementById('login-pass').value;
   if (!username || !password) return showLoginError();
 
+  // btnGuard for login — disable for max 5s to prevent double-submit
+  const loginBtn = document.getElementById('login-btn');
+  loginBtn.disabled = true;
+  loginBtn._origText = loginBtn.innerHTML;
+  loginBtn.innerHTML = '<svg style="width:16px;height:16px;vertical-align:middle;animation:spin 0.8s linear infinite;margin-right:6px" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="28 56" stroke-linecap="round"/></svg>' + loginBtn._origText;
+  const loginGuardTimer = setTimeout(() => {
+    loginBtn.disabled = false;
+    if (loginBtn._origText !== undefined) { loginBtn.innerHTML = loginBtn._origText; delete loginBtn._origText; }
+  }, 5000);
+
+  // Helper to reset login button early (on failure paths)
+  function resetLoginBtn() {
+    clearTimeout(loginGuardTimer);
+    loginBtn.disabled = false;
+    if (loginBtn._origText !== undefined) { loginBtn.innerHTML = loginBtn._origText; delete loginBtn._origText; }
+  }
+
   // Check lockout
   const lo = getLockout(username);
   if (lo.until > Date.now()) {
+    resetLoginBtn();
     showLockoutMessage(username);
     return;
   }
@@ -1720,6 +1737,7 @@ async function doLogin() {
 
   if (!valid) {
     const newAttempts = (lo.attempts || 0) + 1;
+    resetLoginBtn();
     if (newAttempts >= MAX_ATTEMPTS) {
       setLockout(username, { attempts: newAttempts, until: Date.now() + LOCKOUT_MS });
       showLockoutMessage(username);
@@ -1775,6 +1793,8 @@ function signOut(reason) {
   try { sessionStorage.removeItem('mauli_current_user'); } catch(e) {}
   stopIdleTimer();
   stopRealtimeListeners();
+  // Close ALL open modals so stale windows don't remain after logout
+  document.querySelectorAll('.modal-overlay.open').forEach(m => m.classList.remove('open'));
   document.getElementById('idle-warning-overlay').style.display = 'none';
   document.getElementById('stale-tab-banner').style.display = 'none';
   document.getElementById('app').style.display = 'none';
@@ -1784,10 +1804,10 @@ function signOut(reason) {
 }
 
 // ============================================================
-// AUTO-LOGOUT — 5 min idle, 30s warning
+// AUTO-LOGOUT — 30 min idle, 30s warning
 // ============================================================
-const IDLE_TIMEOUT_MS  = 5 * 60 * 1000; // 5 minutes
-const IDLE_WARNING_MS  = 30 * 1000;      // warn 30s before
+const IDLE_TIMEOUT_MS  = 30 * 60 * 1000; // 30 minutes
+const IDLE_WARNING_MS  = 30 * 1000;       // warn 30s before
 
 let idleTimer        = null;
 let idleWarnTimer    = null;
@@ -3740,8 +3760,30 @@ async function restoreSingleJSON(input, collectionKey) {
 
     if (!Array.isArray(data)) throw new Error('JSON file must contain an array of records.');
 
+    // Stop realtime listeners during import — prevents mid-upsert re-fetch from overwriting data
+    stopRealtimeListeners();
+
     DB[collectionKey] = data;
-    await save(collectionKey);
+
+    // Large collections (>400 records) need chunked save, not single save()
+    if (data.length > 400) {
+      updateSyncStatus('syncing');
+      const CHUNK = 400;
+      for (let i = 0; i < data.length; i += CHUNK) {
+        const chunk = data.slice(i, i + CHUNK);
+        if (_db) {
+          const { error } = await _db.from(collectionKey).upsert(chunk, { onConflict: 'id' });
+          if (error) throw new Error(error.message);
+        }
+      }
+      try { localStorage.setItem('mauli_' + collectionKey, JSON.stringify(data)); } catch(e) {}
+      updateSyncStatus('synced');
+    } else {
+      await save(collectionKey);
+    }
+
+    // Restart realtime listeners after import completes
+    startRealtimeListeners();
 
     addLog('edit', `Single JSON imported for ${label}: ${file.name} (${data.length} records)`);
     await save('log');
@@ -3754,6 +3796,7 @@ async function restoreSingleJSON(input, collectionKey) {
     if (document.getElementById('tab-backup')?.classList.contains('active')) renderBackupHistory();
     toast(`✅ ${label} imported successfully! (${data.length} records)`, 'success');
   } catch(e) {
+    startRealtimeListeners(); // always restart listeners even on failure
     toast('❌ Failed to import JSON: ' + e.message, 'error');
   }
   input.value = '';
