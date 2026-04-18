@@ -343,8 +343,8 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     <button class="nav-btn" onclick="showTab('overdue',this)">⚠ Overdue</button>
     <button class="nav-btn mgr-only" onclick="showTab('creditnotes',this)" style="display:none">📝 Credit Notes</button>
     <button class="nav-btn mgr-only" onclick="showTab('ledger',this)" style="display:none">📒 Customer Ledger</button>
-    <button class="nav-btn dev-only" onclick="showTab('log',this)" style="display:none">📋 Activity Log</button>
     <button class="nav-btn expenses-tab-btn" onclick="showTab('expenses',this)" style="display:none">💸 Expenses</button>
+    <button class="nav-btn dev-only" onclick="showTab('log',this)" style="display:none">📋 Activity Log</button>
     <button class="nav-btn dev-only" onclick="showTab('users',this)" style="display:none">👤 Users</button>
     <button class="nav-btn dev-only" onclick="showTab('backup',this)" style="display:none">💾 Backup</button>
   </div>
@@ -354,12 +354,6 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
     <!-- ===== DASHBOARD ===== -->
     <div class="tab-panel active" id="tab-dashboard">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
-        <div style="font-size:0.88rem;font-weight:600;color:var(--muted)">Financial Year</div>
-        <select id="dash-fy-select" onchange="renderDashboard()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:0.85rem;color:var(--text);font-family:inherit;cursor:pointer">
-          <option value="all">All Years</option>
-        </select>
-      </div>
       <div class="stat-grid">
         <div class="stat-card blue">
           <div class="stat-label">Total Customers</div>
@@ -369,18 +363,28 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         <div class="stat-card">
           <div class="stat-label">Total Invoiced</div>
           <div class="stat-value" id="stat-invoiced">₹0</div>
-          <div class="stat-sub" id="stat-invoiced-sub">All time</div>
+          <div class="stat-sub">All time</div>
         </div>
         <div class="stat-card green">
           <div class="stat-label">Received</div>
           <div class="stat-value" id="stat-received">₹0</div>
-          <div class="stat-sub" id="stat-received-sub">Payments collected</div>
+          <div class="stat-sub">All time</div>
         </div>
         <div class="stat-card red">
           <div class="stat-label">Outstanding</div>
           <div class="stat-value" id="stat-outstanding">₹0</div>
-          <div class="stat-sub" id="stat-outstanding-sub">Pending dues</div>
+          <div class="stat-sub">All time</div>
         </div>
+      </div>
+      <!-- Year-wise Summary Table -->
+      <div class="section-card" id="dash-yearwise-section" style="margin-bottom:20px">
+        <div class="section-header" style="margin-bottom:12px">
+          <div class="section-title">📅 Year-wise Summary</div>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Financial Year</th><th>Total Invoiced</th><th>Received</th><th>Outstanding</th></tr></thead>
+          <tbody id="dash-yearwise"></tbody>
+        </table></div>
       </div>
       <div class="section-card">
         <div class="section-header">
@@ -439,6 +443,9 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         </div>
       </div>
       <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
+        <select class="filter-btn" id="inv-fy-filter" onchange="renderInvoices()" style="min-width:140px;font-weight:600;color:var(--accent);border-color:var(--accent)">
+          <option value="all">All Years</option>
+        </select>
         <input class="search-input" placeholder="Search invoices..." id="inv-search" oninput="renderInvoices()" style="min-width:160px">
         <select class="filter-btn" id="inv-cust-filter" onchange="renderInvoices();toggleCustClear('inv-cust-filter','inv-cust-clear')" style="min-width:140px">
           <option value="">All Customers</option>
@@ -478,6 +485,9 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         </div>
       </div>
       <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
+        <select class="filter-btn" id="pay-fy-filter" onchange="renderPayments()" style="min-width:140px;font-weight:600;color:var(--accent);border-color:var(--accent)">
+          <option value="all">All Years</option>
+        </select>
         <input class="search-input" placeholder="Search payments..." id="pay-search" oninput="renderPayments()" style="min-width:160px">
         <select class="filter-btn" id="pay-cust-filter" onchange="renderPayments();toggleCustClear('pay-cust-filter','pay-cust-clear')" style="min-width:140px">
           <option value="">All Customers</option>
@@ -747,6 +757,9 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         </div>
       </div>
       <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
+        <select class="filter-btn" id="cn-fy-filter" onchange="renderCreditNotes()" style="min-width:140px;font-weight:600;color:var(--accent);border-color:var(--accent)">
+          <option value="all">All Years</option>
+        </select>
         <input class="search-input" placeholder="Search credit notes..." id="cn-search" oninput="renderCreditNotes()" style="min-width:160px">
         <select class="filter-btn" id="cn-cust-filter" onchange="renderCreditNotes()" style="min-width:140px">
           <option value="">All Customers</option>
@@ -2405,6 +2418,9 @@ function clearInvAmtFilter() {
 }
 
 function renderInvoices() {
+  // Populate FY dropdown from invoice dates
+  populateFYFilter('inv-fy-filter', DB.invoices.map(i => i.date));
+  const selectedFY   = document.getElementById('inv-fy-filter')?.value || 'all';
   const search      = document.getElementById('inv-search').value.toLowerCase();
   const custFilter2 = document.getElementById('inv-cust-filter').value;
   const statusF     = document.getElementById('inv-status-filter').value;
@@ -2417,11 +2433,17 @@ function renderInvoices() {
 
   if (dateFrom || dateTo) {
     label.textContent = `Showing invoices: ${dateFrom ? 'from ' + fmtDate(dateFrom) : ''} ${dateTo ? 'to ' + fmtDate(dateTo) : ''}`;
+  } else if (selectedFY !== 'all') {
+    label.textContent = 'F.Y. 20' + selectedFY.slice(0,2) + '-' + selectedFY.slice(2);
   } else {
     label.textContent = 'Showing all invoices';
   }
 
   let list = DB.invoices.filter(inv => {
+    // FY filter
+    if (selectedFY !== 'all') {
+      try { if (getFYTag(inv.date) !== selectedFY) return false; } catch(e) { return false; }
+    }
     const c = DB.customers.find(c => String(c.id) === String(Math.round(parseFloat(inv.customerId)))) || DB.customers.find(c => String(c.id) === String(inv.customerId));
     const textMatch = [inv.invNo, c?.name, inv.description].join(' ').toLowerCase().includes(search);
     const custMatch = !custFilter2 || String(Math.round(parseFloat(inv.customerId))) === custFilter2 || String(inv.customerId) === custFilter2;
@@ -2874,6 +2896,9 @@ function clearPayDateFilter() {
 }
 
 function renderPayments() {
+  // Populate FY dropdown from payment dates
+  populateFYFilter('pay-fy-filter', DB.payments.map(p => p.date));
+  const selectedFY = document.getElementById('pay-fy-filter')?.value || 'all';
   const search   = document.getElementById('pay-search').value.toLowerCase();
   const custF    = document.getElementById('pay-cust-filter')?.value || '';
   const methodF  = document.getElementById('pay-method-filter')?.value || '';
@@ -2933,6 +2958,10 @@ function renderPayments() {
 
   // Apply filters
   list = list.filter(p => {
+    // FY filter
+    if (selectedFY !== 'all') {
+      try { if (getFYTag(p.date) !== selectedFY) return false; } catch(e) { return false; }
+    }
     const c = DB.customers.find(c => String(c.id) === String(Math.round(parseFloat(p.customerId)))) || DB.customers.find(c => String(c.id) === String(p.customerId));
     const textMatch   = [c?.name, p.invNos?.join(' '), p.method, p.ref, p.notes].join(' ').toLowerCase().includes(search);
     const custMatch   = !custF   || String(Math.round(parseFloat(p.customerId))) === custF || String(p.customerId) === custF;
@@ -3141,6 +3170,9 @@ function clearCNDateFilter() {
 }
 
 function renderCreditNotes() {
+  // Populate FY dropdown from credit note dates
+  populateFYFilter('cn-fy-filter', (DB.creditNotes||[]).map(cn => cn.date));
+  const selectedFY = document.getElementById('cn-fy-filter')?.value || 'all';
   const search  = document.getElementById('cn-search')?.value.toLowerCase() || '';
   const custF   = document.getElementById('cn-cust-filter')?.value || '';
   const reasonF = document.getElementById('cn-reason-filter')?.value || '';
@@ -3152,6 +3184,10 @@ function renderCreditNotes() {
   if (!tbody) return;
 
   let list = (DB.creditNotes || []).filter(cn => {
+    // FY filter
+    if (selectedFY !== 'all') {
+      try { if (getFYTag(cn.date) !== selectedFY) return false; } catch(e) { return false; }
+    }
     const c   = DB.customers.find(c => String(c.id) === String(cn.customerId));
     const inv = DB.invoices.find(i => String(i.id) === String(cn.invoiceId));
     const textMatch   = [cn.cnNumber, c?.name, inv?.invNo, cn.reason, cn.notes].join(' ').toLowerCase().includes(search);
@@ -3297,67 +3333,55 @@ function renderOverdue() {
 // DASHBOARD
 // ============================================================
 function renderDashboard() {
-  // ── Build FY options from invoice dates ──
-  const fySet = new Set();
-  DB.invoices.forEach(i => { try { fySet.add(getFYTag(i.date)); } catch(e) {} });
-  const fyList = Array.from(fySet).sort().reverse(); // newest first
-  const sel = document.getElementById('dash-fy-select');
-  if (sel) {
-    const prev = sel.value;
-    sel.innerHTML = '<option value="all">All Years</option>' +
-      fyList.map(fy => {
-        const label = 'FY 20' + fy.slice(0,2) + '-' + fy.slice(2);
-        return `<option value="${fy}">${label}</option>`;
-      }).join('');
-    // Restore selection if still valid, else default to current FY
-    const currentFY = getFYTag(new Date().toISOString());
-    if (fyList.includes(prev)) sel.value = prev;
-    else if (fyList.includes(currentFY)) sel.value = currentFY;
-    else sel.value = 'all';
-  }
-  const selectedFY = sel ? sel.value : 'all';
-  const fyLabel = selectedFY === 'all' ? 'All time'
-    : 'FY 20' + selectedFY.slice(0,2) + '-' + selectedFY.slice(2);
-
-  // ── Filter invoices & payments by selected FY ──
-  const filteredInvoices = selectedFY === 'all'
-    ? DB.invoices
-    : DB.invoices.filter(i => { try { return getFYTag(i.date) === selectedFY; } catch(e) { return false; } });
-
-  const filteredInvoiceIds = new Set(filteredInvoices.map(i => String(i.id)));
-
-  const filteredPayments = selectedFY === 'all'
-    ? DB.payments
-    : DB.payments.filter(p => { try { return getFYTag(p.date) === selectedFY; } catch(e) { return false; } });
-
-  const totalInvoiced = filteredInvoices.reduce((s,i) => s + parseFloat(i.amount), 0);
-  // Only count actual money received (not Cancelled or Cash Discount adjustments)
-  const totalReceived = filteredPayments
+  // ── All-time stats (no FY filter) ──
+  const totalInvoiced    = DB.invoices.reduce((s,i) => s + parseFloat(i.amount), 0);
+  const totalReceived    = DB.payments
     .filter(p => p.method !== 'Cancelled' && p.method !== 'Cash Discount')
     .reduce((s,p) => s + parseFloat(p.amount), 0);
-  const totalAdjusted = filteredPayments
-    .filter(p => p.method === 'Cancelled' || p.method === 'Cash Discount')
-    .reduce((s,p) => s + parseFloat(p.amount), 0);
-  const totalCreditNotes = (DB.creditNotes||[]).reduce((s,cn) => s + parseFloat(cn.amount), 0);
-  const totalOutstanding = filteredInvoices.reduce((s,i) => {
+  const totalOutstanding = DB.invoices.reduce((s,i) => {
     const bal = parseFloat(i.amount) - getPaidAmount(i.id);
     return s + Math.max(0, bal);
   }, 0);
 
-  document.getElementById('stat-customers').textContent = DB.customers.length;
-  document.getElementById('stat-invoiced').textContent  = '₹' + fmt(totalInvoiced);
-  document.getElementById('stat-received').textContent  = '₹' + fmt(totalReceived);
-  document.getElementById('stat-outstanding').textContent = '₹' + fmt(totalOutstanding);
-  // Update sub-labels with FY context
-  const subEl1 = document.getElementById('stat-invoiced-sub');
-  const subEl2 = document.getElementById('stat-received-sub');
-  const subEl3 = document.getElementById('stat-outstanding-sub');
-  if (subEl1) subEl1.textContent = fyLabel;
-  if (subEl2) subEl2.textContent = fyLabel;
-  if (subEl3) subEl3.textContent = fyLabel;
+  document.getElementById('stat-customers').textContent    = DB.customers.length;
+  document.getElementById('stat-invoiced').textContent     = '₹' + fmt(totalInvoiced);
+  document.getElementById('stat-received').textContent     = '₹' + fmt(totalReceived);
+  document.getElementById('stat-outstanding').textContent  = '₹' + fmt(totalOutstanding);
 
-  // Recent invoices — filtered by selected FY
-  const recent = [...filteredInvoices].sort((a,b) => new Date(b.date)-new Date(a.date)).slice(0,5);
+  // ── Year-wise summary table ──
+  const fySet = new Set();
+  DB.invoices.forEach(i => { try { fySet.add(getFYTag(i.date)); } catch(e) {} });
+  const fyList = Array.from(fySet).sort().reverse(); // newest first
+
+  const yearTbody = document.getElementById('dash-yearwise');
+  if (yearTbody) {
+    if (!fyList.length) {
+      yearTbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:20px">No invoice data yet.</td></tr>`;
+    } else {
+      yearTbody.innerHTML = fyList.map(fy => {
+        const label = 'F.Y. 20' + fy.slice(0,2) + '-' + fy.slice(2);
+        const fyInvs = DB.invoices.filter(i => { try { return getFYTag(i.date) === fy; } catch(e) { return false; } });
+        const fyPays = DB.payments.filter(p => {
+          try { return getFYTag(p.date) === fy && p.method !== 'Cancelled' && p.method !== 'Cash Discount'; } catch(e) { return false; }
+        });
+        const invAmt  = fyInvs.reduce((s,i) => s + parseFloat(i.amount), 0);
+        const rcvAmt  = fyPays.reduce((s,p) => s + parseFloat(p.amount), 0);
+        const outAmt  = fyInvs.reduce((s,i) => {
+          const bal = parseFloat(i.amount) - getPaidAmount(i.id);
+          return s + Math.max(0, bal);
+        }, 0);
+        return `<tr>
+          <td><strong>${label}</strong></td>
+          <td>₹${fmt(invAmt)}</td>
+          <td style="color:var(--success)">₹${fmt(rcvAmt)}</td>
+          <td style="color:${outAmt > 0 ? 'var(--danger)' : 'var(--success)'}">₹${fmt(outAmt)}</td>
+        </tr>`;
+      }).join('');
+    }
+  }
+
+  // Recent invoices (all time, latest 5)
+  const recent = [...DB.invoices].sort((a,b) => new Date(b.date)-new Date(a.date)).slice(0,5);
   document.getElementById('dash-recent').innerHTML = recent.length
     ? recent.map(inv => {
         const c = DB.customers.find(c => String(c.id) === String(Math.round(parseFloat(inv.customerId)))) || DB.customers.find(c => String(c.id) === String(inv.customerId));
@@ -3369,7 +3393,7 @@ function renderDashboard() {
 
   // Overdue
   const today = new Date(); today.setHours(0,0,0,0);
-  const overdueList = filteredInvoices.filter(inv => {
+  const overdueList = DB.invoices.filter(inv => {
     const bal = parseFloat(inv.amount) - getPaidAmount(inv.id);
     return bal > 0 && parseLocalDate(inv.dueDate) < today;
   }).slice(0,5);
@@ -4452,6 +4476,26 @@ function getFYTag(dateStr) {
   const fyStart = m >= 4 ? y : y - 1;
   const fyEnd   = fyStart + 1;
   return String(fyStart).slice(-2) + String(fyEnd).slice(-2); // "2425"
+}
+
+// Populate a FY dropdown from a set of dates; default to current FY if present
+function populateFYFilter(selectId, dates) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const fySet = new Set();
+  dates.forEach(d => { try { if (d) fySet.add(getFYTag(d)); } catch(e) {} });
+  const fyList = Array.from(fySet).sort().reverse();
+  const prev = sel.value;
+  sel.innerHTML = '<option value="all">All Years</option>' +
+    fyList.map(fy => {
+      const label = 'F.Y. 20' + fy.slice(0,2) + '-' + fy.slice(2);
+      return `<option value="${fy}">${label}</option>`;
+    }).join('');
+  const currentFY = getFYTag(new Date().toISOString());
+  // Restore previous selection if valid; else pick current FY; else all
+  if (fyList.includes(prev)) sel.value = prev;
+  else if (fyList.includes(currentFY)) sel.value = currentFY;
+  else sel.value = 'all';
 }
 
 function getNextReceiptNo(dateStr) {
