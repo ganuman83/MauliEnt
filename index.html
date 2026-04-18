@@ -354,6 +354,12 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
 
     <!-- ===== DASHBOARD ===== -->
     <div class="tab-panel active" id="tab-dashboard">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+        <div style="font-size:0.88rem;font-weight:600;color:var(--muted)">Financial Year</div>
+        <select id="dash-fy-select" onchange="renderDashboard()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 12px;font-size:0.85rem;color:var(--text);font-family:inherit;cursor:pointer">
+          <option value="all">All Years</option>
+        </select>
+      </div>
       <div class="stat-grid">
         <div class="stat-card blue">
           <div class="stat-label">Total Customers</div>
@@ -363,17 +369,17 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         <div class="stat-card">
           <div class="stat-label">Total Invoiced</div>
           <div class="stat-value" id="stat-invoiced">₹0</div>
-          <div class="stat-sub">All time</div>
+          <div class="stat-sub" id="stat-invoiced-sub">All time</div>
         </div>
         <div class="stat-card green">
           <div class="stat-label">Received</div>
           <div class="stat-value" id="stat-received">₹0</div>
-          <div class="stat-sub">Payments collected</div>
+          <div class="stat-sub" id="stat-received-sub">Payments collected</div>
         </div>
         <div class="stat-card red">
           <div class="stat-label">Outstanding</div>
           <div class="stat-value" id="stat-outstanding">₹0</div>
-          <div class="stat-sub">Pending dues</div>
+          <div class="stat-sub" id="stat-outstanding-sub">Pending dues</div>
         </div>
       </div>
       <div class="section-card">
@@ -573,9 +579,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
         <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Mode</th><th>Done By</th><th>Actions</th></tr></thead>
         <tbody id="exp-table"></tbody>
       </table></div>
-      <div style="margin-top:16px">
-        <button class="btn btn-danger btn-sm" onclick="deleteAllExpenses()">🗑 Delete All Expenses</button>
-      </div>
+
     </div>
 
     <!-- ===== USER MANAGEMENT ===== -->
@@ -675,7 +679,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('payments')">💳 Payments JSON</button>
             <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('creditNotes')">📝 Credit Notes JSON</button>
             <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('expenses')">💸 Expenses JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('log')">📋 Activity Log JSON</button>
+
           </div>
         </div>
 
@@ -687,6 +691,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <button class="btn btn-danger btn-sm" onclick="clearCollection('invoices')">🧾 Delete All Invoices</button>
             <button class="btn btn-danger btn-sm" onclick="clearCollection('payments')">💳 Delete All Payments</button>
             <button class="btn btn-danger btn-sm" onclick="clearCollection('creditNotes')">📝 Delete All Credit Notes</button>
+            <button class="btn btn-danger btn-sm" onclick="deleteAllExpenses()">🗑 Delete All Expenses</button>
             <button class="btn btn-danger btn-sm" style="background:#7f1d1d;border:1px solid #991b1b" onclick="clearTestData()">🗑 Delete Everything (All Above)</button>
           </div>
           <div class="backup-info" style="background:#e74c3c10;border:1px solid #e74c3c30">
@@ -1549,7 +1554,7 @@ function startClock() {
   function tick() {
     const now = new Date();
     const d = now.toLocaleDateString('en-IN', { day:'2-digit', month:'short', year:'numeric' });
-    const t = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true });
+    const t = now.toLocaleTimeString('en-IN', { hour:'2-digit', minute:'2-digit', hour12:true });
     label.textContent = d + '  ' + t;
   }
   tick();
@@ -3292,16 +3297,49 @@ function renderOverdue() {
 // DASHBOARD
 // ============================================================
 function renderDashboard() {
-  const totalInvoiced = DB.invoices.reduce((s,i) => s + parseFloat(i.amount), 0);
+  // ── Build FY options from invoice dates ──
+  const fySet = new Set();
+  DB.invoices.forEach(i => { try { fySet.add(getFYTag(i.date)); } catch(e) {} });
+  const fyList = Array.from(fySet).sort().reverse(); // newest first
+  const sel = document.getElementById('dash-fy-select');
+  if (sel) {
+    const prev = sel.value;
+    sel.innerHTML = '<option value="all">All Years</option>' +
+      fyList.map(fy => {
+        const label = 'FY 20' + fy.slice(0,2) + '-' + fy.slice(2);
+        return `<option value="${fy}">${label}</option>`;
+      }).join('');
+    // Restore selection if still valid, else default to current FY
+    const currentFY = getFYTag(new Date().toISOString());
+    if (fyList.includes(prev)) sel.value = prev;
+    else if (fyList.includes(currentFY)) sel.value = currentFY;
+    else sel.value = 'all';
+  }
+  const selectedFY = sel ? sel.value : 'all';
+  const fyLabel = selectedFY === 'all' ? 'All time'
+    : 'FY 20' + selectedFY.slice(0,2) + '-' + selectedFY.slice(2);
+
+  // ── Filter invoices & payments by selected FY ──
+  const filteredInvoices = selectedFY === 'all'
+    ? DB.invoices
+    : DB.invoices.filter(i => { try { return getFYTag(i.date) === selectedFY; } catch(e) { return false; } });
+
+  const filteredInvoiceIds = new Set(filteredInvoices.map(i => String(i.id)));
+
+  const filteredPayments = selectedFY === 'all'
+    ? DB.payments
+    : DB.payments.filter(p => { try { return getFYTag(p.date) === selectedFY; } catch(e) { return false; } });
+
+  const totalInvoiced = filteredInvoices.reduce((s,i) => s + parseFloat(i.amount), 0);
   // Only count actual money received (not Cancelled or Cash Discount adjustments)
-  const totalReceived = DB.payments
+  const totalReceived = filteredPayments
     .filter(p => p.method !== 'Cancelled' && p.method !== 'Cash Discount')
     .reduce((s,p) => s + parseFloat(p.amount), 0);
-  const totalAdjusted = DB.payments
+  const totalAdjusted = filteredPayments
     .filter(p => p.method === 'Cancelled' || p.method === 'Cash Discount')
     .reduce((s,p) => s + parseFloat(p.amount), 0);
   const totalCreditNotes = (DB.creditNotes||[]).reduce((s,cn) => s + parseFloat(cn.amount), 0);
-  const totalOutstanding = DB.invoices.reduce((s,i) => {
+  const totalOutstanding = filteredInvoices.reduce((s,i) => {
     const bal = parseFloat(i.amount) - getPaidAmount(i.id);
     return s + Math.max(0, bal);
   }, 0);
@@ -3310,9 +3348,16 @@ function renderDashboard() {
   document.getElementById('stat-invoiced').textContent  = '₹' + fmt(totalInvoiced);
   document.getElementById('stat-received').textContent  = '₹' + fmt(totalReceived);
   document.getElementById('stat-outstanding').textContent = '₹' + fmt(totalOutstanding);
+  // Update sub-labels with FY context
+  const subEl1 = document.getElementById('stat-invoiced-sub');
+  const subEl2 = document.getElementById('stat-received-sub');
+  const subEl3 = document.getElementById('stat-outstanding-sub');
+  if (subEl1) subEl1.textContent = fyLabel;
+  if (subEl2) subEl2.textContent = fyLabel;
+  if (subEl3) subEl3.textContent = fyLabel;
 
-  // Recent invoices
-  const recent = [...DB.invoices].sort((a,b) => new Date(b.date)-new Date(a.date)).slice(0,5);
+  // Recent invoices — filtered by selected FY
+  const recent = [...filteredInvoices].sort((a,b) => new Date(b.date)-new Date(a.date)).slice(0,5);
   document.getElementById('dash-recent').innerHTML = recent.length
     ? recent.map(inv => {
         const c = DB.customers.find(c => String(c.id) === String(Math.round(parseFloat(inv.customerId)))) || DB.customers.find(c => String(c.id) === String(inv.customerId));
@@ -3324,7 +3369,7 @@ function renderDashboard() {
 
   // Overdue
   const today = new Date(); today.setHours(0,0,0,0);
-  const overdueList = DB.invoices.filter(inv => {
+  const overdueList = filteredInvoices.filter(inv => {
     const bal = parseFloat(inv.amount) - getPaidAmount(inv.id);
     return bal > 0 && parseLocalDate(inv.dueDate) < today;
   }).slice(0,5);
