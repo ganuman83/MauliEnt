@@ -2376,10 +2376,20 @@ function getPaidAmount(invoiceId) {
   const discounts = DB.payments
     .filter(p => String(p.invoiceId) === invIdStr && p.method === 'Cash Discount')
     .reduce((s, p) => s + parseFloat(p.amount), 0);
+  // Fallback: some older entries store cash discount only in the cashDisc field
+  // without a separate 'Cash Discount' method row. Include those to avoid missing them.
+  const discountFallback = discounts === 0
+    ? DB.payments
+        .filter(p => String(p.invoiceId) === invIdStr
+                  && p.method !== 'Cancelled'
+                  && p.method !== 'Cash Discount'
+                  && parseFloat(p.cashDisc) > 0)
+        .reduce((s, p) => s + parseFloat(p.cashDisc), 0)
+    : 0;
   const credits = (DB.creditNotes || [])
     .filter(cn => String(cn.invoiceId) === invIdStr)
     .reduce((s, cn) => s + parseFloat(cn.amount), 0);
-  return payments + discounts + credits;
+  return payments + discounts + discountFallback + credits;
 }
 
 function getInvoiceStatus(inv) {
@@ -3348,9 +3358,17 @@ function renderOverdue() {
 function renderDashboard() {
   // ── All-time stats (no FY filter) ──
   const totalInvoiced    = DB.invoices.reduce((s,i) => s + parseFloat(i.amount), 0);
-  const totalReceived    = DB.payments
+  // Received = actual cash/cheque/UPI payments + Cash Discounts + Credit Notes
+  // This matches getPaidAmount logic so that: Invoiced - Received = Outstanding
+  const totalCashPaid    = DB.payments
     .filter(p => p.method !== 'Cancelled' && p.method !== 'Cash Discount')
     .reduce((s,p) => s + parseFloat(p.amount), 0);
+  const totalCashDisc    = DB.payments
+    .filter(p => p.method === 'Cash Discount')
+    .reduce((s,p) => s + parseFloat(p.amount), 0);
+  const totalCreditNotes = (DB.creditNotes || [])
+    .reduce((s,cn) => s + parseFloat(cn.amount), 0);
+  const totalReceived    = totalCashPaid + totalCashDisc + totalCreditNotes;
   const totalOutstanding = DB.invoices.reduce((s,i) => {
     const bal = parseFloat(i.amount) - getPaidAmount(i.id);
     return s + Math.max(0, bal);
@@ -3377,16 +3395,29 @@ function renderDashboard() {
         const fyPays = DB.payments.filter(p => {
           try { return getFYTag(p.date) === fy && p.method !== 'Cancelled' && p.method !== 'Cash Discount'; } catch(e) { return false; }
         });
+        const fyCashDisc = DB.payments.filter(p => {
+          try { return getFYTag(p.date) === fy && p.method === 'Cash Discount'; } catch(e) { return false; }
+        }).reduce((s,p) => s + parseFloat(p.amount), 0);
+        const fyCreditNotes = (DB.creditNotes || []).filter(cn => {
+          try { return getFYTag(cn.date) === fy; } catch(e) { return false; }
+        }).reduce((s,cn) => s + parseFloat(cn.amount), 0);
         const invAmt  = fyInvs.reduce((s,i) => s + parseFloat(i.amount), 0);
-        const rcvAmt  = fyPays.reduce((s,p) => s + parseFloat(p.amount), 0);
+        const fyCashPaid = fyPays.reduce((s,p) => s + parseFloat(p.amount), 0);
+        const rcvAmt  = fyCashPaid + fyCashDisc + fyCreditNotes;
         const outAmt  = fyInvs.reduce((s,i) => {
           const bal = parseFloat(i.amount) - getPaidAmount(i.id);
           return s + Math.max(0, bal);
         }, 0);
+        const bracketParts = [];
+        if (fyCashDisc > 0)    bracketParts.push(`Cash Dis ₹${fmt(fyCashDisc)}`);
+        if (fyCreditNotes > 0) bracketParts.push(`Credit Note ₹${fmt(fyCreditNotes)}`);
+        const bracketStr = bracketParts.length
+          ? ` <span style="font-size:0.80em;color:var(--muted)">(incl. ${bracketParts.join(', ')})</span>`
+          : '';
         return `<tr>
           <td><strong>${label}</strong></td>
           <td>₹${fmt(invAmt)}</td>
-          <td style="color:var(--success)">₹${fmt(rcvAmt)}</td>
+          <td style="color:var(--success)">₹${fmt(rcvAmt)}${bracketStr}</td>
           <td style="color:${outAmt > 0 ? 'var(--danger)' : 'var(--success)'}">₹${fmt(outAmt)}</td>
         </tr>`;
       }).join('');
@@ -5001,9 +5032,12 @@ async function saveEditPayment() {
     // *** BUG FIX: Explicitly delete old Supabase rows ***
     // Previously only new rows were upserted, leaving old ones in DB.
     // On reload, Supabase returned both old + new entries → double-counted payments.
+    // Also round float IDs (e.g. 1776353107501.04) before passing to Supabase,
+    // as numeric columns truncate decimals causing .in() matches to fail → stale rows remain.
     if (_db && oldEntryIds.length) {
       try {
-        const { error } = await _db.from('payments').delete().in('id', oldEntryIds);
+        const roundedIds = oldEntryIds.map(id => Math.round(id));
+        const { error } = await _db.from('payments').delete().in('id', roundedIds);
         if (error) console.error('Failed to delete old payment entries from Supabase:', error.message);
       } catch(e) {
         console.error('Failed to delete old payment entries from Supabase:', e);
@@ -5013,9 +5047,11 @@ async function saveEditPayment() {
     const singleId = window._editPaymentSingleId;
     DB.payments = DB.payments.filter(px => px.id !== singleId);
     // Delete the single old row from Supabase
+    // Round float IDs (e.g. 1776353107501.04) — Supabase numeric columns truncate decimals
+    // so passing the float directly causes .eq() to miss the row → stale duplicate remains.
     if (_db && singleId) {
       try {
-        const { error } = await _db.from('payments').delete().eq('id', singleId);
+        const { error } = await _db.from('payments').delete().eq('id', Math.round(singleId));
         if (error) console.error('Failed to delete old single payment from Supabase:', error.message);
       } catch(e) {
         console.error('Failed to delete old single payment from Supabase:', e);
