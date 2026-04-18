@@ -5022,36 +5022,38 @@ async function saveEditPayment() {
     : DB.payments.find(px => px.id === window._editPaymentSingleId)?.receiptNo;
 
   if (_editPaymentGroupId) {
-    // Collect old entry IDs BEFORE filtering them out (needed for Supabase delete)
-    const oldEntryIds = DB.payments
-      .filter(px => px.groupId === _editPaymentGroupId)
-      .map(px => px.id);
-
     DB.payments = DB.payments.filter(px => px.groupId !== _editPaymentGroupId);
 
-    // *** BUG FIX: Explicitly delete old Supabase rows ***
-    // Previously only new rows were upserted, leaving old ones in DB.
-    // On reload, Supabase returned both old + new entries → double-counted payments.
-    // Also round float IDs (e.g. 1776353107501.04) before passing to Supabase,
-    // as numeric columns truncate decimals causing .in() matches to fail → stale rows remain.
-    if (_db && oldEntryIds.length) {
+    // *** DELETE BY groupId — the only reliable approach for old float IDs ***
+    // Old entries have fractional IDs like 1776353224823.33 and 1776353224823.45.
+    // Deleting by id array fails: Math.round() causes collisions (both round to same int),
+    // and raw floats lose precision in JS JSON serialisation → Supabase match fails.
+    // groupId is a plain string column — always matches exactly, no precision issues.
+    if (_db && _editPaymentGroupId) {
       try {
-        const roundedIds = oldEntryIds.map(id => Math.round(id));
-        const { error } = await _db.from('payments').delete().in('id', roundedIds);
-        if (error) console.error('Failed to delete old payment entries from Supabase:', error.message);
+        const { error } = await _db.from('payments').delete().eq('groupId', _editPaymentGroupId);
+        if (error) console.error('Failed to delete old payment group from Supabase:', error.message);
       } catch(e) {
-        console.error('Failed to delete old payment entries from Supabase:', e);
+        console.error('Failed to delete old payment group from Supabase:', e);
       }
     }
   } else {
     const singleId = window._editPaymentSingleId;
+    // For single entries (no groupId), assign a groupId now so future edits use the reliable path.
+    // Find the entry's groupId if it has one (it might have been assigned from a previous edit).
+    const singleEntry = DB.payments.find(px => px.id === singleId);
+    const singleGroupId = singleEntry?.groupId;
     DB.payments = DB.payments.filter(px => px.id !== singleId);
-    // Delete the single old row from Supabase
-    // Round float IDs (e.g. 1776353107501.04) — Supabase numeric columns truncate decimals
-    // so passing the float directly causes .eq() to miss the row → stale duplicate remains.
+    // Delete from Supabase: prefer groupId if available (safe for float IDs),
+    // otherwise fall back to id-based delete (only safe for integer IDs).
     if (_db && singleId) {
       try {
-        const { error } = await _db.from('payments').delete().eq('id', Math.round(singleId));
+        let error;
+        if (singleGroupId) {
+          ({ error } = await _db.from('payments').delete().eq('groupId', singleGroupId));
+        } else {
+          ({ error } = await _db.from('payments').delete().eq('id', singleId));
+        }
         if (error) console.error('Failed to delete old single payment from Supabase:', error.message);
       } catch(e) {
         console.error('Failed to delete old single payment from Supabase:', e);
