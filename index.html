@@ -339,9 +339,12 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
   <!-- Nav -->
   <div class="nav" id="main-nav">
     <button class="nav-btn active" onclick="showTab('dashboard',this)">📊 Dashboard</button>
+    <button class="nav-btn" onclick="showTab('dealers',this)">🏪 Dealers</button>
+    <button class="nav-btn" onclick="showTab('purchases',this)">🛒 Purchases</button>
+    <button class="nav-btn" onclick="showTab('purchpayments',this)">💰 Payments</button>
     <button class="nav-btn" onclick="showTab('customers',this)">👥 Customers</button>
-    <button class="nav-btn" onclick="showTab('invoices',this)">🧾 Invoices</button>
-    <button class="nav-btn" onclick="showTab('payments',this)">💳 Payments</button>
+    <button class="nav-btn" onclick="showTab('invoices',this)">🧾 Sales</button>
+    <button class="nav-btn" onclick="showTab('payments',this)">💳 Receipts</button>
     <button class="nav-btn mgr-only" onclick="showTab('creditnotes',this)" style="display:none">📝 Credit Notes</button>
     <button class="nav-btn expenses-tab-btn" onclick="showTab('expenses',this)" style="display:none">💸 Expenses</button>
     <button class="nav-btn mgr-only" onclick="showTab('ledger',this)" style="display:none">📒 Customer Ledger</button>
@@ -378,14 +381,22 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <div class="stat-sub">All time</div>
         </div>
       </div>
-      <!-- Year-wise Summary Table -->
-      <div class="section-card" id="dash-yearwise-section" style="margin-bottom:20px">
+      <div class="section-card" id="dash-yearwise-sales-section" style="margin-bottom:20px">
         <div class="section-header" style="margin-bottom:12px">
-          <div class="section-title">📅 Year-wise Summary</div>
+          <div class="section-title">📅 Yearwise Summary — Sales</div>
         </div>
         <div class="table-wrap"><table>
           <thead><tr><th>Financial Year</th><th>Total Invoiced</th><th>Received</th><th>FY Outstanding</th><th>Cumulative Outstanding</th></tr></thead>
           <tbody id="dash-yearwise"></tbody>
+        </table></div>
+      </div>
+      <div class="section-card" id="dash-yearwise-purchases-section" style="margin-bottom:20px">
+        <div class="section-header" style="margin-bottom:12px">
+          <div class="section-title">🛒 Yearwise Summary — Purchases</div>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Financial Year</th><th>Total Purchased</th><th>Paid</th><th>FY Outstanding</th><th>Cumulative Outstanding</th></tr></thead>
+          <tbody id="dash-yearwise-purchases"></tbody>
         </table></div>
       </div>
       <div class="section-card">
@@ -438,7 +449,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     
     <div class="tab-panel" id="tab-invoices">
       <div class="section-header" style="margin-bottom:16px">
-        <div class="section-title">Invoices</div>
+        <div class="section-title">Sales</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm dev-only" onclick="openImportModal('invoices')">📥 Import</button>
           <button class="btn-icon-dl dev-only" onclick="downloadTemplate('invoices')" title="Download Template"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
@@ -482,7 +493,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     
     <div class="tab-panel" id="tab-payments">
       <div class="section-header" style="margin-bottom:16px">
-        <div class="section-title">Payment History</div>
+        <div class="section-title">Receipt History</div>
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="btn btn-outline btn-sm dev-only" onclick="openImportModal('payments')">📥 Import</button>
           <button class="btn-icon-dl dev-only" onclick="downloadTemplate('payments')" title="Download Template"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
@@ -652,6 +663,9 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="creditnotes"> 📝 Credit Notes</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="ledger"> 📒 Ledger</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="expenses"> 💸 Expenses</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="dealers"> 🏪 Dealers</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="purchases"> 🛒 Purchases</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="purchpayments"> 💰 Payments (Purchase)</label>
           </div>
           <div style="font-size:0.75rem;color:var(--muted);margin-top:6px">ℹ Select which tabs this user can see. At least one tab required.</div>
         </div>
@@ -1250,6 +1264,9 @@ const DB = {
   expenses: [],
   log: [],
   users: [],
+  dealers: [],
+  purchases: [],
+  purchpayments: [],
   backupHistory: []
 };
 
@@ -1264,7 +1281,7 @@ let editingUserId = null;
 let _db = null;
 
 // Collections stored in Supabase (also used as table names)
-const FS_COLLECTIONS = ['customers','invoices','payments','creditNotes','expenses','log','users'];
+const FS_COLLECTIONS = ['customers','invoices','payments','creditNotes','expenses','log','users','dealers','purchases','purchpayments'];
 // These stay local only
 const LOCAL_KEYS = {
   backupHistory: 'mauli_backup_history'
@@ -1378,7 +1395,15 @@ function normalizeIds() {
   });
 
   // Expenses: same caution — id left as-is.
-  // (No FK columns to normalise in expenses.)
+  (DB.dealers || []).forEach(d => { if (d.id != null) d.id = Math.round(parseFloat(d.id)); });
+  (DB.purchases || []).forEach(p => {
+    if (p.id != null)       p.id       = Math.round(parseFloat(p.id));
+    if (p.dealerId != null) p.dealerId = Math.round(parseFloat(p.dealerId));
+  });
+  (DB.purchpayments || []).forEach(pp => {
+    if (pp.dealerId   != null) pp.dealerId   = Math.round(parseFloat(pp.dealerId));
+    if (pp.purchaseId != null) pp.purchaseId = Math.round(parseFloat(pp.purchaseId));
+  });
 }
 
 async function load() {
@@ -1892,7 +1917,10 @@ const CONFIGURABLE_TABS = [
   {key:'overdue',     label:'\u26a0 Overdue'},
   {key:'creditnotes', label:'\U0001f4dd Credit Notes'},
   {key:'ledger',      label:'\U0001f4d2 Ledger'},
-  {key:'expenses',    label:'\U0001f4b8 Expenses'}
+  {key:'expenses',    label:'\U0001f4b8 Expenses'},
+  {key:'dealers',      label:'\U0001f3ea Dealers'},
+  {key:'purchases',    label:'\U0001f6d2 Purchases'},
+  {key:'purchpayments',label:'\U0001f4b0 Payments (Purchase)'}
 ];
 
 function applyRoleAccess(role, user) {
@@ -1901,7 +1929,7 @@ function applyRoleAccess(role, user) {
 
   if (role === 'emp' || role === 'admin') {
     const defaultTabs = role === 'admin'
-      ? ['dashboard','customers','invoices','payments','overdue','creditnotes','ledger','expenses']
+      ? ['dashboard','dealers','purchases','purchpayments','customers','invoices','payments','overdue','creditnotes','ledger','expenses']
       : ['invoices'];
     const tabAccess = (resolvedUser?.tabAccess && resolvedUser.tabAccess.length > 0)
       ? resolvedUser.tabAccess : defaultTabs;
@@ -1966,6 +1994,9 @@ function showTab(name, btn) {
   if (name === 'users')       renderUsersTable();
   if (name === 'backup')      renderBackupHistory();
   if (name === 'expenses')    renderExpenses();
+  if (name === 'dealers')     renderDealers();
+  if (name === 'purchases')   { updatePurDealerDropdowns(); renderPurchases(); }
+  if (name === 'purchpayments') { updatePurchPayDealerDropdowns(); renderPurchPayments(); }
 }
 
 function toast(msg, type='info') {
@@ -3349,17 +3380,17 @@ function renderDashboard() {
   document.getElementById('stat-received').textContent     = '₹' + fmt(totalReceived);
   document.getElementById('stat-outstanding').textContent  = '₹' + fmt(totalOutstanding);
 
-  // ── Year-wise summary table ──
+  // ── Yearwise Summary — Sales ──
   const fySet = new Set();
-  DB.invoices.forEach(i      => { try { fySet.add(getFYTag(i.date)); } catch(e) {} });
-  DB.payments.forEach(p      => { try { fySet.add(getFYTag(p.date)); } catch(e) {} });
+  DB.invoices.forEach(i => { try { fySet.add(getFYTag(i.date)); } catch(e) {} });
+  DB.payments.forEach(p => { try { fySet.add(getFYTag(p.date)); } catch(e) {} });
   (DB.creditNotes || []).forEach(cn => { try { fySet.add(getFYTag(cn.date)); } catch(e) {} });
-  const fyList = Array.from(fySet).sort().reverse(); // newest first
+  const fyList = Array.from(fySet).sort().reverse();
 
   const yearTbody = document.getElementById('dash-yearwise');
   if (yearTbody) {
     if (!fyList.length) {
-      yearTbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No invoice data yet.</td></tr>`;
+      yearTbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No sales data yet.</td></tr>`;
     } else {
       const fyListData = fyList.map(fy => {
         const label = 'F.Y. 20' + fy.slice(0,2) + '-' + fy.slice(2);
@@ -3388,24 +3419,58 @@ function renderDashboard() {
           : '';
         return { label, invAmt, rcvAmt, bracketStr, outAmt };
       });
-
-      // Compute cumulative outstanding (running total from oldest FY to newest)
-      const fyRows = fyListData.slice().reverse(); // oldest first for cumulation
+      const fyRows = fyListData.slice().reverse();
       let cumulative = 0;
       const fyRowsWithCumul = fyRows.map(row => {
         cumulative += row.outAmt;
         return { ...row, cumulOut: cumulative };
-      }).reverse(); // back to newest first for display
-
-      yearTbody.innerHTML = fyRowsWithCumul.map(({ label, invAmt, rcvAmt, bracketStr, outAmt, cumulOut }) => {
-        return `<tr>
+      }).reverse();
+      yearTbody.innerHTML = fyRowsWithCumul.map(({ label, invAmt, rcvAmt, bracketStr, outAmt, cumulOut }) => `<tr>
           <td><strong>${label}</strong></td>
           <td>₹${fmt(invAmt)}</td>
           <td style="color:var(--success)">₹${fmt(rcvAmt)}${bracketStr}</td>
           <td style="color:${outAmt > 0 ? 'var(--danger)' : 'var(--success)'}">₹${fmt(outAmt)}</td>
           <td style="color:${cumulOut > 0 ? 'var(--danger)' : 'var(--success)'}"><strong>₹${fmt(cumulOut)}</strong></td>
-        </tr>`;
-      }).join('');
+        </tr>`).join('');
+    }
+  }
+
+  // ── Yearwise Summary — Purchases ──
+  const purFySet = new Set();
+  (DB.purchases || []).forEach(p => { try { purFySet.add(getFYTag(p.date)); } catch(e) {} });
+  (DB.purchpayments || []).forEach(p => { try { purFySet.add(getFYTag(p.date)); } catch(e) {} });
+  const purFyList = Array.from(purFySet).sort().reverse();
+
+  const purYearTbody = document.getElementById('dash-yearwise-purchases');
+  if (purYearTbody) {
+    if (!purFyList.length) {
+      purYearTbody.innerHTML = `<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:20px">No purchase data yet.</td></tr>`;
+    } else {
+      const purFyData = purFyList.map(fy => {
+        const label = 'F.Y. 20' + fy.slice(0,2) + '-' + fy.slice(2);
+        const fyPurs = (DB.purchases || []).filter(p => { try { return getFYTag(p.date) === fy; } catch(e) { return false; } });
+        const fyPPs  = (DB.purchpayments || []).filter(p => { try { return getFYTag(p.date) === fy; } catch(e) { return false; } });
+        const purAmt  = fyPurs.reduce((s,p) => s + parseFloat(p.amount || 0), 0);
+        const paidAmt = fyPPs.reduce((s,p) => s + parseFloat(p.amount || 0), 0);
+        const outAmt  = fyPurs.reduce((s,p) => {
+          const bal = parseFloat(p.amount || 0) - getPurchasePaidAmount(p.id);
+          return s + Math.max(0, bal);
+        }, 0);
+        return { label, purAmt, paidAmt, outAmt };
+      });
+      const purRows = purFyData.slice().reverse();
+      let purCumul = 0;
+      const purRowsWithCumul = purRows.map(row => {
+        purCumul += row.outAmt;
+        return { ...row, cumulOut: purCumul };
+      }).reverse();
+      purYearTbody.innerHTML = purRowsWithCumul.map(({ label, purAmt, paidAmt, outAmt, cumulOut }) => `<tr>
+          <td><strong>${label}</strong></td>
+          <td>₹${fmt(purAmt)}</td>
+          <td style="color:var(--success)">₹${fmt(paidAmt)}</td>
+          <td style="color:${outAmt > 0 ? 'var(--danger)' : 'var(--success)'}">₹${fmt(outAmt)}</td>
+          <td style="color:${cumulOut > 0 ? 'var(--danger)' : 'var(--success)'}"><strong>₹${fmt(cumulOut)}</strong></td>
+        </tr>`).join('');
     }
   }
 
@@ -3744,6 +3809,9 @@ async function downloadFullBackup() {
   });
 
   zip.file('customers.json', JSON.stringify(DB.customers, null, 2));
+  zip.file('dealers.json', JSON.stringify(DB.dealers || [], null, 2));
+  zip.file('purchases.json', JSON.stringify(DB.purchases || [], null, 2));
+  zip.file('purchase_payments.json', JSON.stringify(DB.purchpayments || [], null, 2));
   zip.file('invoices.json', JSON.stringify(DB.invoices, null, 2));
   zip.file('payments.json', JSON.stringify(DB.payments, null, 2));
   zip.file('overdue_summary.json', JSON.stringify(overdueSummary, null, 2));
@@ -3784,7 +3852,10 @@ function downloadSingleBackup(type) {
     payments: { data: DB.payments, name: 'payments' },
     creditNotes: { data: DB.creditNotes || [], name: 'credit_notes' },
     expenses: { data: DB.expenses || [], name: 'expenses' },
-    log: { data: DB.log, name: 'activity_log' }
+    log: { data: DB.log, name: 'activity_log' },
+    dealers: { data: DB.dealers || [], name: 'dealers' },
+    purchases: { data: DB.purchases || [], name: 'purchases' },
+    purchpayments: { data: DB.purchpayments || [], name: 'purchase_payments' }
   };
   const item = map[type];
   if (!item) return;
@@ -4044,7 +4115,7 @@ async function handleImport(input) {
       }).filter(r => {
         // Skip the template instruction row (starts with ⚠)
         // Check all possible first-column keys across all import types
-        const name = String(r['Name'] || r['Name *'] || r['CustomerName'] || r['CustomerName *'] || r['InvoiceNo'] || r['InvoiceNo *'] || r['Receipt No'] || r['CN No'] || r['Date'] || '');
+        const name = String(r['Name'] || r['Name *'] || r['CustomerName'] || r['CustomerName *'] || r['DealerName'] || r['DealerName *'] || r['InvoiceNo'] || r['InvoiceNo *'] || r['BillNo'] || r['BillNo *'] || r['Receipt No'] || r['CN No'] || r['Date'] || '');
         return name && !name.startsWith('⚠') && !name.toLowerCase().startsWith('columns marked');
       });
 
@@ -4320,6 +4391,110 @@ async function handleImport(input) {
           await showDuplicateAlert(cnDupes, 'creditnotes');
           return;
         }
+
+      } else if (importType === 'dealers') {
+        const dealerDupes = [];
+        for (const r of rows) {
+          const name = String(r.Name || '').trim();
+          if (!name) continue;
+          const existing = (DB.dealers||[]).find(d => d.name.toLowerCase() === name.toLowerCase());
+          if (existing) dealerDupes.push({ key: name, old: existing, newRow: r });
+        }
+        const newItems = [];
+        let idBase = Date.now();
+        for (const r of rows) {
+          const name = String(r.Name || '').trim();
+          const phone = String(r.Phone || '').trim();
+          if (!name || !phone || phone === 'nan') continue;
+          const item = {
+            id: Math.round(idBase++), name, phone,
+            email: r.Email||'', company: r.Company||'',
+            city: String(r.Pincode||'').replace(/\.0$/,''),
+            address: r.Address||'', gst: r.GST||'',
+            creditDays: parseInt(r.CreditDays)||30
+          };
+          if (!DB.dealers) DB.dealers = [];
+          DB.dealers.push(item);
+          newItems.push(item);
+          count++;
+        }
+        setImportProgress(40, `Uploading ${count} dealers…`, 'Saving to Supabase');
+        await saveChunked('dealers', newItems);
+        addLog('create', `Imported ${count} dealers from Excel`);
+        if (dealerDupes.length > 0) {
+          setImportProgress(100, '✅ Done!', `${count} imported, ${dealerDupes.length} duplicate(s)`);
+          await new Promise(r => setTimeout(r, 600));
+          closeModal('modal-import'); resetImportModal(); renderAll();
+          toast(`✅ ${count} dealers imported. ${dealerDupes.length} duplicate(s) detected.`, 'success');
+          await showDuplicateAlert(dealerDupes, 'dealers');
+          return;
+        }
+        setImportProgress(100, '✅ Done!', `${count} dealers imported`);
+        await new Promise(r => setTimeout(r, 700));
+        closeModal('modal-import'); resetImportModal(); renderAll();
+        toast(`✅ Imported ${count} dealers!`, 'success');
+        return;
+
+      } else if (importType === 'purchases') {
+        const newItems = [];
+        let idBase = Date.now();
+        for (const r of rows) {
+          if (!r.DealerName || !r.BillNo) continue;
+          const d = (DB.dealers||[]).find(d => d.name.toLowerCase() === String(r.DealerName).toLowerCase());
+          if (!d) { toast(`Dealer not found: "${r.DealerName}" — skipping`, 'error'); continue; }
+          const item = {
+            id: Math.round(idBase++), dealerId: d.id,
+            billNo: String(r.BillNo),
+            date: fmtExcelDate(r.BillDate),
+            dueDate: fmtExcelDate(r.DueDate),
+            amount: parseFloat(r.Amount)||0,
+            description: r.Description||''
+          };
+          if (!DB.purchases) DB.purchases = [];
+          DB.purchases.push(item);
+          newItems.push(item);
+          count++;
+        }
+        setImportProgress(40, `Uploading ${count} purchases…`, 'Saving to Supabase');
+        await saveChunked('purchases', newItems);
+        addLog('create', `Imported ${count} purchases from Excel`);
+        setImportProgress(100, '✅ Done!', `${count} purchases imported`);
+        await new Promise(r => setTimeout(r, 700));
+        closeModal('modal-import'); resetImportModal(); renderAll();
+        toast(`✅ Imported ${count} purchases!`, 'success');
+        return;
+
+      } else if (importType === 'purchpayments') {
+        const newItems = [];
+        let idBase = Date.now();
+        for (const r of rows) {
+          if (!r.Dealer || !r['Bill No']) continue;
+          const d = (DB.dealers||[]).find(d => d.name.toLowerCase() === String(r.Dealer).toLowerCase());
+          if (!d) { toast(`Dealer not found: "${r.Dealer}" — skipping`, 'error'); continue; }
+          const pur = (DB.purchases||[]).find(p => p.billNo === String(r['Bill No']) && p.dealerId === d.id);
+          if (!pur) { toast(`Bill not found: "${r['Bill No']}" — skipping`, 'error'); continue; }
+          const item = {
+            id: Math.round(idBase++), dealerId: d.id, purchaseId: pur.id,
+            amount: parseFloat(r.Amount)||0,
+            date: fmtExcelDate(r['Payment Date']),
+            method: String(r.Mode||'Cash').trim(),
+            ref: String(r['Reference/UTR']||'').trim(),
+            notes: String(r.Notes||'').trim(),
+            receiptNo: String(r['Receipt No']||'').trim()
+          };
+          if (!DB.purchpayments) DB.purchpayments = [];
+          DB.purchpayments.push(item);
+          newItems.push(item);
+          count++;
+        }
+        setImportProgress(40, `Uploading ${count} purchase payments…`, 'Saving to Supabase');
+        await saveChunked('purchpayments', newItems);
+        addLog('create', `Imported ${count} purchase payments from Excel`);
+        setImportProgress(100, '✅ Done!', `${count} purchase payments imported`);
+        await new Promise(r => setTimeout(r, 700));
+        closeModal('modal-import'); resetImportModal(); renderAll();
+        toast(`✅ Imported ${count} purchase payments!`, 'success');
+        return;
 
       } else if (importType === 'expenses') {
         // Expenses have no unique key like Receipt No — we use Date+Category+Amount+Mode as a composite key for dupe detection
@@ -5079,6 +5254,9 @@ function renderAll() {
   // renderBackupHistory only called when backup tab is active
   if (document.getElementById('tab-backup')?.classList.contains('active')) renderBackupHistory();
   if (document.getElementById('tab-expenses')?.classList.contains('active')) renderExpenses();
+  if (document.getElementById('tab-dealers')?.classList.contains('active')) renderDealers();
+  if (document.getElementById('tab-purchases')?.classList.contains('active')) renderPurchases();
+  if (document.getElementById('tab-purchpayments')?.classList.contains('active')) renderPurchPayments();
 }
 
 function updateLedgerDropdown() {
@@ -6335,6 +6513,451 @@ function confirmDialog({ title = 'Are you sure?', msg = '', type = 'danger', okL
   }
 })();
 </script>
+
+// ─── DEALER CRUD ───────────────────────────────────────────
+let editingDealerId = null;
+let dealerFilter = 'all';
+
+function setDealerFilter(f, btn) {
+  dealerFilter = f;
+  document.querySelectorAll('#tab-dealers .filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDealers();
+}
+
+function openDealerModal(id) {
+  editingDealerId = id || null;
+  const d = id ? (DB.dealers||[]).find(d => d.id === id) : null;
+  document.getElementById('dealer-modal-title').textContent = d ? 'Edit Dealer' : 'Add Dealer';
+  document.getElementById('dl-name').value      = d?.name || '';
+  document.getElementById('dl-phone').value     = d?.phone || '';
+  document.getElementById('dl-email').value     = d?.email || '';
+  document.getElementById('dl-company').value   = d?.company || '';
+  document.getElementById('dl-city').value      = d?.city || '';
+  document.getElementById('dl-gst').value       = d?.gst || '';
+  document.getElementById('dl-address').value   = d?.address || '';
+  document.getElementById('dl-creditdays').value= d?.creditDays ?? 30;
+  openModal('modal-dealer');
+}
+
+async function saveDealer() {
+  const name  = document.getElementById('dl-name').value.trim();
+  const phone = document.getElementById('dl-phone').value.trim();
+  if (!name || !phone) return toast('Name and Phone are required.', 'error');
+  if (!DB.dealers) DB.dealers = [];
+  if (editingDealerId) {
+    const idx = DB.dealers.findIndex(d => d.id === editingDealerId);
+    if (idx === -1) return;
+    DB.dealers[idx] = { ...DB.dealers[idx], name, phone,
+      email: document.getElementById('dl-email').value.trim(),
+      company: document.getElementById('dl-company').value.trim(),
+      city: document.getElementById('dl-city').value.trim(),
+      gst: document.getElementById('dl-gst').value.trim(),
+      address: document.getElementById('dl-address').value.trim(),
+      creditDays: parseInt(document.getElementById('dl-creditdays').value)||30
+    };
+    addLog('edit', `Edited dealer: ${name}`);
+    toast('Dealer updated!', 'success');
+  } else {
+    const item = { id: Date.now(), name, phone,
+      email: document.getElementById('dl-email').value.trim(),
+      company: document.getElementById('dl-company').value.trim(),
+      city: document.getElementById('dl-city').value.trim(),
+      gst: document.getElementById('dl-gst').value.trim(),
+      address: document.getElementById('dl-address').value.trim(),
+      creditDays: parseInt(document.getElementById('dl-creditdays').value)||30
+    };
+    DB.dealers.push(item);
+    addLog('create', `Added dealer: ${name}`);
+    toast('Dealer added!', 'success');
+  }
+  save('dealers');
+  closeModal('modal-dealer');
+  renderDealers();
+  updatePurDealerDropdowns();
+  updatePurchPayDealerDropdowns();
+}
+
+async function deleteDealer(id) {
+  const d = (DB.dealers||[]).find(d => d.id === id);
+  if (!d) return;
+  if (!await confirmDialog({ title: 'Delete Dealer', msg: `Delete dealer "${d.name}"? All related purchases and payments may become orphaned.`, type: 'danger', okLabel: 'Delete' })) return;
+  DB.dealers = DB.dealers.filter(d => d.id !== id);
+  save('dealers');
+  deleteDoc('dealers', id);
+  addLog('delete', `Deleted dealer: ${d.name}`);
+  toast('Dealer deleted.', 'error');
+  renderDealers();
+}
+
+function renderDealers() {
+  const tbody = document.getElementById('dealer-table');
+  if (!tbody) return;
+  const search = document.getElementById('dealer-search')?.value.toLowerCase() || '';
+  let list = (DB.dealers||[]).filter(d =>
+    [d.name, d.phone, d.email, d.city, d.company].join(' ').toLowerCase().includes(search)
+  ).sort((a,b) => a.name.localeCompare(b.name,'en-IN'));
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">🏪</div><p>No dealers found.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map((d, i) => `<tr>
+    <td>${i+1}</td>
+    <td><strong>${d.name}</strong>${d.company?`<br><small style="color:var(--muted)">${d.company}</small>`:''}</td>
+    <td>${d.phone||'—'}</td>
+    <td>${d.email||'—'}</td>
+    <td>${d.city||'—'}</td>
+    <td>${d.company||'—'}</td>
+    <td>${d.gst||'—'}</td>
+    <td>${d.creditDays||30} days</td>
+    <td><div class="action-btns">
+      <button class="btn btn-outline btn-xs" onclick="openDealerModal(${d.id})">✏️ Edit</button>
+      <button class="btn btn-danger btn-xs" onclick="deleteDealer(${d.id})">🗑</button>
+    </div></td>
+  </tr>`).join('');
+}
+
+function exportDealers() {
+  const list = (DB.dealers||[]).sort((a,b) => a.name.localeCompare(b.name,'en-IN'));
+  if (!list.length) return toast('No dealers to export.', 'error');
+  const data = list.map(d => ({
+    'Name *': d.name, 'Phone *': d.phone,
+    'Email': d.email||'', 'Company': d.company||'',
+    'Pincode': d.city||'', 'Address': d.address||'',
+    'GST': d.gst||'', 'CreditDays': d.creditDays||30
+  }));
+  exportStyledXLSX(data, 'Dealers_MauliEnt', 'Dealers');
+}
+
+// ─── PURCHASE CRUD ──────────────────────────────────────────
+let editingPurchaseId = null;
+
+function updatePurDealerDropdowns() {
+  const sel = document.getElementById('pur-dealer-filter');
+  if (!sel) return;
+  const current = sel.value;
+  sel.innerHTML = '<option value="">All Dealers</option>' +
+    (DB.dealers||[]).sort((a,b)=>a.name.localeCompare(b.name,'en-IN'))
+      .map(d => `<option value="${d.id}" ${String(d.id)===current?'selected':''}>${d.name}</option>`).join('');
+}
+
+function getPurchasePaidAmount(purchaseId) {
+  return (DB.purchpayments||[])
+    .filter(p => String(p.purchaseId) === String(purchaseId))
+    .reduce((s,p) => s + parseFloat(p.amount||0), 0);
+}
+
+function getPurchaseStatus(pur) {
+  const paid = getPurchasePaidAmount(pur.id);
+  const amt  = parseFloat(pur.amount||0);
+  if (paid >= amt) return 'paid';
+  const today = new Date(); today.setHours(0,0,0,0);
+  if (pur.dueDate && parseLocalDate(pur.dueDate) < today) return 'overdue';
+  if (paid > 0) return 'partial';
+  return 'pending';
+}
+
+function openPurchaseModal(id) {
+  editingPurchaseId = id || null;
+  const p = id ? (DB.purchases||[]).find(p => p.id === id) : null;
+  document.getElementById('purchase-modal-title').textContent = p ? 'Edit Purchase' : 'New Purchase';
+  document.getElementById('pur-dup-warning').style.display = 'none';
+  const dealerSel = document.getElementById('pur-dealer-id');
+  dealerSel.innerHTML = '<option value="">-- Select Dealer --</option>' +
+    (DB.dealers||[]).sort((a,b)=>a.name.localeCompare(b.name,'en-IN'))
+      .map(d => `<option value="${d.id}" ${p && String(d.id)===String(p.dealerId)?'selected':''}>${d.name}</option>`).join('');
+  document.getElementById('pur-billno').value   = p?.billNo || '';
+  document.getElementById('pur-date').value     = p?.date || today();
+  document.getElementById('pur-duedate').value  = p?.dueDate || '';
+  document.getElementById('pur-amount').value   = p?.amount || '';
+  document.getElementById('pur-desc').value     = p?.description || '';
+  openModal('modal-purchase');
+}
+
+function checkPurDup() {
+  const billNo = document.getElementById('pur-billno').value.trim();
+  const warn   = document.getElementById('pur-dup-warning');
+  const exists = (DB.purchases||[]).find(p => p.billNo === billNo && p.id !== editingPurchaseId);
+  warn.style.display = exists ? '' : 'none';
+}
+
+async function savePurchase() {
+  const dealerId = parseInt(document.getElementById('pur-dealer-id').value);
+  const billNo   = document.getElementById('pur-billno').value.trim();
+  const date     = document.getElementById('pur-date').value;
+  const amount   = parseFloat(document.getElementById('pur-amount').value);
+  if (!dealerId || !billNo || !date || !amount) return toast('Dealer, Bill No, Date and Amount are required.', 'error');
+  if (!DB.purchases) DB.purchases = [];
+  if (editingPurchaseId) {
+    const idx = DB.purchases.findIndex(p => p.id === editingPurchaseId);
+    if (idx === -1) return;
+    DB.purchases[idx] = { ...DB.purchases[idx], dealerId, billNo, date,
+      dueDate: document.getElementById('pur-duedate').value || '',
+      amount, description: document.getElementById('pur-desc').value.trim()
+    };
+    addLog('edit', `Edited purchase: ${billNo}`);
+    toast('Purchase updated!', 'success');
+  } else {
+    const item = { id: Date.now(), dealerId, billNo, date,
+      dueDate: document.getElementById('pur-duedate').value || '',
+      amount, description: document.getElementById('pur-desc').value.trim()
+    };
+    DB.purchases.push(item);
+    addLog('create', `Added purchase: ${billNo}`);
+    toast('Purchase added!', 'success');
+  }
+  save('purchases');
+  closeModal('modal-purchase');
+  renderPurchases();
+}
+
+async function deletePurchase(id) {
+  const p = (DB.purchases||[]).find(p => p.id === id);
+  if (!p) return;
+  if (!await confirmDialog({ title: 'Delete Purchase', msg: `Delete bill "${p.billNo}"? All payments against it will become orphaned.`, type: 'danger', okLabel: 'Delete' })) return;
+  DB.purchases = DB.purchases.filter(p => p.id !== id);
+  save('purchases');
+  deleteDoc('purchases', id);
+  addLog('delete', `Deleted purchase: ${p.billNo}`);
+  toast('Purchase deleted.', 'error');
+  renderPurchases();
+}
+
+function clearPurDateFilter() {
+  document.getElementById('pur-date-from').value = '';
+  document.getElementById('pur-date-to').value = '';
+  renderPurchases();
+}
+
+function renderPurchases() {
+  const tbody = document.getElementById('pur-table');
+  if (!tbody) return;
+  updatePurDealerDropdowns();
+  const selectedFY = document.getElementById('pur-fy-filter')?.value || 'all';
+  const search     = document.getElementById('pur-search')?.value.toLowerCase() || '';
+  const dealerF    = document.getElementById('pur-dealer-filter')?.value || '';
+  const statusF    = document.getElementById('pur-status-filter')?.value || '';
+  const dateFrom   = document.getElementById('pur-date-from')?.value || '';
+  const dateTo     = document.getElementById('pur-date-to')?.value || '';
+
+  // populate FY filter
+  const fyEl = document.getElementById('pur-fy-filter');
+  if (fyEl) {
+    const current = fyEl.value;
+    const fys = [...new Set((DB.purchases||[]).map(p => { try { return getFYTag(p.date); } catch { return null; } }).filter(Boolean))].sort().reverse();
+    fyEl.innerHTML = '<option value="all">All Years</option>' + fys.map(fy => `<option value="${fy}" ${fy===current?'selected':''}>${fy}</option>`).join('');
+    if (fys.includes(current)) fyEl.value = current;
+  }
+
+  let list = (DB.purchases||[]).filter(p => {
+    if (selectedFY !== 'all') { try { if (getFYTag(p.date) !== selectedFY) return false; } catch { return false; } }
+    const d = (DB.dealers||[]).find(d => String(d.id) === String(p.dealerId));
+    if (!([p.billNo, d?.name, p.description].join(' ').toLowerCase().includes(search))) return false;
+    if (dealerF && String(p.dealerId) !== dealerF) return false;
+    if (statusF && getPurchaseStatus(p) !== statusF) return false;
+    if (dateFrom && p.date < dateFrom) return false;
+    if (dateTo   && p.date > dateTo)   return false;
+    return true;
+  }).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">🛒</div><p>No purchases found.</p></div></td></tr>`;
+    return;
+  }
+
+  const statusMap = { paid:'badge-paid', pending:'badge-pending', partial:'badge-partial', overdue:'badge-overdue' };
+  tbody.innerHTML = list.map(p => {
+    const d    = (DB.dealers||[]).find(d => String(d.id) === String(p.dealerId));
+    const paid = getPurchasePaidAmount(p.id);
+    const bal  = parseFloat(p.amount) - paid;
+    const st   = getPurchaseStatus(p);
+    return `<tr>
+      <td><strong>${p.billNo}</strong></td>
+      <td>${d?.name||'—'}</td>
+      <td>${fmtDate(p.date)}</td>
+      <td>${p.dueDate ? fmtDate(p.dueDate) : '—'}</td>
+      <td>₹${fmt(p.amount)}</td>
+      <td style="color:var(--success)">₹${fmt(paid)}</td>
+      <td style="color:${bal>0?'var(--danger)':'var(--success)'}"><strong>₹${fmt(bal)}</strong></td>
+      <td><span class="badge ${statusMap[st]||''}">${st}</span></td>
+      <td><div class="action-btns">
+        <button class="btn btn-outline btn-xs" onclick="openPurchaseModal(${p.id})">✏️ Edit</button>
+        <button class="btn btn-danger btn-xs" onclick="deletePurchase(${p.id})">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportPurchases() {
+  const list = (DB.purchases||[]).sort((a,b) => new Date(a.date) - new Date(b.date));
+  if (!list.length) return toast('No purchases to export.', 'error');
+  const data = list.map(p => {
+    const d = (DB.dealers||[]).find(d => d.id === p.dealerId);
+    return { 'DealerName *': d?.name||'', 'BillNo *': p.billNo, 'BillDate *': fmtDateExport(p.date), 'DueDate': fmtDateExport(p.dueDate), 'Amount *': parseFloat(p.amount), 'Description': p.description||'' };
+  });
+  exportStyledXLSX(data, 'Purchases_MauliEnt', 'Purchases');
+}
+
+// ─── PURCHASE PAYMENT CRUD ──────────────────────────────────
+let editingPurchPayId = null;
+
+function updatePurchPayDealerDropdowns() {
+  ['pp-dealer-filter','pp-dealer-id'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = (id === 'pp-dealer-filter' ? '<option value="">All Dealers</option>' : '<option value="">-- Select Dealer --</option>') +
+      (DB.dealers||[]).sort((a,b)=>a.name.localeCompare(b.name,'en-IN'))
+        .map(d => `<option value="${d.id}" ${String(d.id)===current?'selected':''}>${d.name}</option>`).join('');
+  });
+}
+
+function updatePurBillDropdown() {
+  const dealerId = document.getElementById('pp-dealer-id')?.value;
+  const sel      = document.getElementById('pp-bill-id');
+  if (!sel) return;
+  const bills = (DB.purchases||[]).filter(p => String(p.dealerId) === String(dealerId));
+  sel.innerHTML = '<option value="">-- Select Bill --</option>' +
+    bills.map(p => `<option value="${p.id}">${p.billNo} — ₹${fmt(p.amount)}</option>`).join('');
+}
+
+function openPurchPaymentModal(id) {
+  editingPurchPayId = id || null;
+  const pp = id ? (DB.purchpayments||[]).find(p => p.id === id) : null;
+  document.getElementById('purchpay-modal-title').textContent = pp ? 'Edit Payment' : 'Record Purchase Payment';
+  updatePurchPayDealerDropdowns();
+  if (pp) {
+    document.getElementById('pp-dealer-id').value = pp.dealerId;
+    updatePurBillDropdown();
+    document.getElementById('pp-bill-id').value = pp.purchaseId;
+  } else {
+    updatePurBillDropdown();
+  }
+  document.getElementById('pp-amount').value    = pp?.amount || '';
+  document.getElementById('pp-date').value      = pp?.date || today();
+  document.getElementById('pp-mode').value      = pp?.method || 'Cash';
+  document.getElementById('pp-ref').value       = pp?.ref || '';
+  document.getElementById('pp-receiptno').value = pp?.receiptNo || '';
+  document.getElementById('pp-notes').value     = pp?.notes || '';
+  openModal('modal-purchpayment');
+}
+
+async function savePurchPayment() {
+  const dealerId   = parseInt(document.getElementById('pp-dealer-id').value);
+  const purchaseId = parseInt(document.getElementById('pp-bill-id').value);
+  const amount     = parseFloat(document.getElementById('pp-amount').value);
+  const date       = document.getElementById('pp-date').value;
+  const method     = document.getElementById('pp-mode').value;
+  if (!dealerId || !purchaseId || !amount || !date) return toast('Dealer, Bill, Amount and Date are required.', 'error');
+  if (!DB.purchpayments) DB.purchpayments = [];
+  const item = { dealerId, purchaseId, amount, date, method,
+    ref: document.getElementById('pp-ref').value.trim(),
+    receiptNo: document.getElementById('pp-receiptno').value.trim(),
+    notes: document.getElementById('pp-notes').value.trim()
+  };
+  if (editingPurchPayId) {
+    const idx = DB.purchpayments.findIndex(p => p.id === editingPurchPayId);
+    if (idx === -1) return;
+    DB.purchpayments[idx] = { ...DB.purchpayments[idx], ...item };
+    addLog('edit', `Edited purchase payment for bill ${document.getElementById('pp-bill-id').options[document.getElementById('pp-bill-id').selectedIndex]?.text}`);
+    toast('Payment updated!', 'success');
+  } else {
+    item.id = Date.now();
+    DB.purchpayments.push(item);
+    addLog('create', `Recorded purchase payment: ₹${amount}`);
+    toast('Payment recorded!', 'success');
+  }
+  save('purchpayments');
+  closeModal('modal-purchpayment');
+  renderPurchPayments();
+  renderPurchases();
+}
+
+async function deletePurchPayment(id) {
+  const pp = (DB.purchpayments||[]).find(p => p.id === id);
+  if (!pp) return;
+  if (!await confirmDialog({ title: 'Delete Payment', msg: 'Delete this purchase payment? This cannot be undone.', type: 'danger', okLabel: 'Delete' })) return;
+  DB.purchpayments = DB.purchpayments.filter(p => p.id !== id);
+  save('purchpayments');
+  deleteDoc('purchpayments', id);
+  addLog('delete', 'Deleted purchase payment');
+  toast('Payment deleted.', 'error');
+  renderPurchPayments();
+  renderPurchases();
+}
+
+function clearPPDateFilter() {
+  document.getElementById('pp-date-from').value = '';
+  document.getElementById('pp-date-to').value = '';
+  renderPurchPayments();
+}
+
+function renderPurchPayments() {
+  const tbody = document.getElementById('pp-table');
+  if (!tbody) return;
+  updatePurchPayDealerDropdowns();
+  const selectedFY = document.getElementById('pp-fy-filter')?.value || 'all';
+  const search     = document.getElementById('pp-search')?.value.toLowerCase() || '';
+  const dealerF    = document.getElementById('pp-dealer-filter')?.value || '';
+  const methodF    = document.getElementById('pp-method-filter')?.value || '';
+  const dateFrom   = document.getElementById('pp-date-from')?.value || '';
+  const dateTo     = document.getElementById('pp-date-to')?.value || '';
+
+  const fyEl = document.getElementById('pp-fy-filter');
+  if (fyEl) {
+    const current = fyEl.value;
+    const fys = [...new Set((DB.purchpayments||[]).map(p => { try { return getFYTag(p.date); } catch { return null; } }).filter(Boolean))].sort().reverse();
+    fyEl.innerHTML = '<option value="all">All Years</option>' + fys.map(fy => `<option value="${fy}" ${fy===current?'selected':''}>${fy}</option>`).join('');
+    if (fys.includes(current)) fyEl.value = current;
+  }
+
+  let list = (DB.purchpayments||[]).filter(p => {
+    if (selectedFY !== 'all') { try { if (getFYTag(p.date) !== selectedFY) return false; } catch { return false; } }
+    const d   = (DB.dealers||[]).find(d => String(d.id) === String(p.dealerId));
+    const pur = (DB.purchases||[]).find(pr => String(pr.id) === String(p.purchaseId));
+    if (!([d?.name, pur?.billNo, p.method, p.ref, p.notes].join(' ').toLowerCase().includes(search))) return false;
+    if (dealerF && String(p.dealerId) !== dealerF) return false;
+    if (methodF && p.method !== methodF) return false;
+    if (dateFrom && p.date < dateFrom) return false;
+    if (dateTo   && p.date > dateTo)   return false;
+    return true;
+  }).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state"><div class="icon">💰</div><p>No purchase payments found.</p></div></td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = list.map(p => {
+    const d   = (DB.dealers||[]).find(d => String(d.id) === String(p.dealerId));
+    const pur = (DB.purchases||[]).find(pr => String(pr.id) === String(p.purchaseId));
+    return `<tr>
+      <td>${fmtDate(p.date)}</td>
+      <td>${d?.name||'—'}</td>
+      <td>${pur?.billNo||'—'}</td>
+      <td>${p.receiptNo||'—'}</td>
+      <td style="color:var(--success);font-weight:600">₹${fmt(p.amount)}</td>
+      <td>${p.method}</td>
+      <td style="color:var(--muted);font-size:0.82rem">${p.ref||'—'}</td>
+      <td style="color:var(--muted);font-size:0.82rem">${p.notes||'—'}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-outline btn-xs" onclick="openPurchPaymentModal(${p.id})">✏️ Edit</button>
+        <button class="btn btn-danger btn-xs" onclick="deletePurchPayment(${p.id})">🗑</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportPurchPayments() {
+  const list = (DB.purchpayments||[]).sort((a,b) => new Date(a.date) - new Date(b.date));
+  if (!list.length) return toast('No purchase payments to export.', 'error');
+  const data = list.map(p => {
+    const d   = (DB.dealers||[]).find(d => d.id === p.dealerId);
+    const pur = (DB.purchases||[]).find(pr => pr.id === p.purchaseId);
+    return { 'Receipt No *': p.receiptNo||'', 'Dealer *': d?.name||'', 'Amount *': parseFloat(p.amount), 'Payment Date *': fmtDateExport(p.date), 'Mode *': p.method, 'Bill No *': pur?.billNo||'', 'Reference/UTR': p.ref||'', 'Notes': p.notes||'' };
+  });
+  exportStyledXLSX(data, 'PurchasePayments_MauliEnt', 'Purchase Payments');
+}
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
