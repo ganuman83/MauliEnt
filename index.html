@@ -1650,6 +1650,12 @@ async function save(key) {
       }
       return; // success
     } catch(e) {
+      // If the table doesn't exist yet, save locally and warn — don't retry
+      if (e.message && (e.message.includes('schema cache') || e.message.includes('relation') || e.message.includes('42P01'))) {
+        console.warn(`Supabase table missing for "${key}" (${tbl(key)}) — saved locally only.`);
+        updateSyncStatus('error');
+        return;
+      }
       console.error(`Supabase save error (attempt ${attempt}):`, e);
       if (attempt < 3) {
         await new Promise(r => setTimeout(r, 1000 * attempt));
@@ -1717,31 +1723,58 @@ async function load() {
   try {
     updateSyncStatus('syncing');
 
+    const missingTables = [];
+
     for (const key of FS_COLLECTIONS) {
-      // Paginate to bypass Supabase's default 1000-row limit
       const PAGE = 1000;
       let allRows = [];
       let from = 0;
+      let collectionFailed = false;
+
       while (true) {
         const { data, error } = await _db.from(tbl(key)).select('*').range(from, from + PAGE - 1);
-        if (error) throw new Error(`Load ${key}: ${error.message}`);
+        if (error) {
+          // 404 / schema cache miss = table doesn't exist yet — skip gracefully
+          if (error.message && (error.message.includes('schema cache') || error.message.includes('relation') || error.code === 'PGRST116' || error.code === '42P01')) {
+            missingTables.push(key);
+            console.warn(`Table missing for "${key}" (${tbl(key)}) — skipping. Create it in Supabase SQL Editor.`);
+          } else {
+            throw new Error(`Load ${key}: ${error.message}`);
+          }
+          collectionFailed = true;
+          break;
+        }
         if (data && data.length > 0) allRows = allRows.concat(data);
-        if (!data || data.length < PAGE) break; // last page
+        if (!data || data.length < PAGE) break;
         from += PAGE;
       }
-      // Deduplicate by id (safeguard against upsert conflicts)
-      const seen = new Set();
-      DB[key] = allRows.filter(row => {
-        const k = String(row.id);
-        if (seen.has(k)) return false;
-        seen.add(k);
-        return true;
+
+      if (!collectionFailed) {
+        const seen = new Set();
+        DB[key] = allRows.filter(row => {
+          const k = String(row.id);
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+      }
+    }
+
+    // Warn dev about missing tables with exact SQL to fix
+    if (missingTables.length > 0) {
+      console.warn('Missing Supabase tables:', missingTables.map(k => tbl(k)));
+      const sqlHints = {
+        debitNotes: `CREATE TABLE public.debit_notes (\n  id bigint PRIMARY KEY,\n  "dealerId" bigint,\n  "purchaseId" bigint,\n  "dnNumber" text,\n  date text,\n  amount numeric,\n  reason text,\n  notes text\n);`
+      };
+      missingTables.forEach(k => {
+        if (sqlHints[k]) console.warn(`SQL to create ${tbl(k)}:\n${sqlHints[k]}`);
       });
     }
+
     // Sort log newest first
     DB.log.sort((a, b) => new Date(b.time) - new Date(a.time));
 
-    // Normalize IDs (Supabase PostgreSQL returns bigint as string in some cases)
+    // Normalize IDs
     normalizeIds();
 
     // One-time migration: if Supabase is empty but localStorage has data, upload it
@@ -1750,7 +1783,7 @@ async function load() {
       await migrateFromLocalStorage();
     }
 
-    updateSyncStatus('synced');
+    updateSyncStatus(missingTables.length > 0 ? 'error' : 'synced');
   } catch(e) {
     console.error('Supabase load error:', e);
     updateSyncStatus('error');
