@@ -709,15 +709,15 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <h3>📤 Selective Backup</h3>
           <p>Download individual data files as JSON for specific sections.</p>
           <div style="display:flex;flex-direction:column;gap:8px">
-            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('customers')">👥 Customers JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('invoices')">🧾 Invoices JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('payments')">💳 Payments JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('creditNotes')">📝 Credit Notes JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('expenses')">💸 Expenses JSON</button>
             <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('dealers')">🏪 Dealers JSON</button>
             <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('purchases')">🛒 Purchases JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('purchpayments')">💰 Purchase Payments JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('purchpayments')">💰 Payments JSON</button>
             <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('debitNotes')">📋 Debit Notes JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('customers')">👥 Customers JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('invoices')">🧾 Invoices JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('payments')">💳 Receipts JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('creditNotes')">📝 Credit Notes JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('expenses')">💸 Expenses JSON</button>
 
           </div>
         </div>
@@ -726,9 +726,13 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <h3 style="color:var(--danger)">🧹 Clear Data</h3>
           <p>Permanently delete specific collections from Supabase. <strong style="color:var(--danger)">User accounts will NOT be deleted.</strong></p>
           <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
+            <button class="btn btn-danger btn-sm" onclick="clearCollection('dealers')">🏪 Delete All Dealers</button>
+            <button class="btn btn-danger btn-sm" onclick="clearCollection('purchases')">🛒 Delete All Purchases</button>
+            <button class="btn btn-danger btn-sm" onclick="clearCollection('purchpayments')">💰 Delete All Payments</button>
+            <button class="btn btn-danger btn-sm" onclick="clearCollection('debitNotes')">📋 Delete All Debit Notes</button>
             <button class="btn btn-danger btn-sm" onclick="clearCollection('customers')">👥 Delete All Customers</button>
             <button class="btn btn-danger btn-sm" onclick="clearCollection('invoices')">🧾 Delete All Invoices</button>
-            <button class="btn btn-danger btn-sm" onclick="clearCollection('payments')">💳 Delete All Payments</button>
+            <button class="btn btn-danger btn-sm" onclick="clearCollection('payments')">💳 Delete All Receipts</button>
             <button class="btn btn-danger btn-sm" onclick="clearCollection('creditNotes')">📝 Delete All Credit Notes</button>
             <button class="btn btn-danger btn-sm" onclick="deleteAllExpenses()">🗑 Delete All Expenses</button>
             <button class="btn btn-danger btn-sm" style="background:#7f1d1d;border:1px solid #991b1b" onclick="clearTestData()">🗑 Delete Everything (All Above)</button>
@@ -753,15 +757,15 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           <h3>📄 Import Single JSON</h3>
           <p>Restore a single collection from a previously downloaded <strong>JSON backup file</strong>. <strong style="color:var(--danger)">Overwrites only that collection.</strong></p>
           <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:12px">
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-customers').click()">👥 Import Customers JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-invoices').click()">🧾 Import Invoices JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-payments').click()">💳 Import Payments JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-creditNotes').click()">📝 Import Credit Notes JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-expenses').click()">💸 Import Expenses JSON</button>
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-dealers').click()">🏪 Import Dealers JSON</button>
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-purchases').click()">🛒 Import Purchases JSON</button>
-            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-purchpayments').click()">💰 Import Purchase Payments JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-purchpayments').click()">💰 Import Payments JSON</button>
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-debitNotes').click()">📋 Import Debit Notes JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-customers').click()">👥 Import Customers JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-invoices').click()">🧾 Import Invoices JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-payments').click()">💳 Import Receipts JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-creditNotes').click()">📝 Import Credit Notes JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-expenses').click()">💸 Import Expenses JSON</button>
           </div>
           <input type="file" id="json-import-customers"    accept=".json" style="display:none" onchange="restoreSingleJSON(this,'customers')">
           <input type="file" id="json-import-invoices"     accept=".json" style="display:none" onchange="restoreSingleJSON(this,'invoices')">
@@ -6055,7 +6059,7 @@ function printPaymentReceipt(paymentId) {
 
 async function clearCollection(key) {
   if (currentUser?.role !== 'dev') return toast('Only Dev can do this.', 'error');
-  const labels = { customers: 'Customers', invoices: 'Invoices', payments: 'Payments', creditNotes: 'Credit Notes' };
+  const labels = { dealers: 'Dealers', purchases: 'Purchases', purchpayments: 'Payments', debitNotes: 'Debit Notes', customers: 'Customers', invoices: 'Invoices', payments: 'Receipts', creditNotes: 'Credit Notes', expenses: 'Expenses' };
   const label = labels[key] || key;
   if (!await confirmDialog({ title: `Delete All ${label}`, msg: `⚠ This will permanently delete ALL ${label} from Supabase.\n\nThis action is irreversible. Are you absolutely sure?`, type: 'danger', okLabel: 'Yes, Delete All' })) return;
   if (!await confirmDialog({ title: 'Final Confirmation', msg: `Second confirmation required.\n\nDelete ALL ${label}? This cannot be undone.`, type: 'danger', okLabel: 'Permanently Delete' })) return;
@@ -6084,11 +6088,11 @@ async function clearCollection(key) {
 
 async function clearTestData() {
   if (currentUser?.role !== 'dev') return toast('Only Dev can do this.', 'error');
-  if (!await confirmDialog({ title: 'Delete Everything', msg: '⚠ This will permanently delete ALL Customers, Invoices, Payments and Credit Notes from Supabase.\n\nUser accounts will NOT be affected.\n\nAre you absolutely sure?', type: 'danger', okLabel: 'Yes, Delete All' })) return;
+  if (!await confirmDialog({ title: 'Delete Everything', msg: '⚠ This will permanently delete ALL data (Dealers, Purchases, Payments, Debit Notes, Customers, Invoices, Receipts, Credit Notes, Expenses) from Supabase.\n\nUser accounts will NOT be affected.\n\nAre you absolutely sure?', type: 'danger', okLabel: 'Yes, Delete All' })) return;
   if (!await confirmDialog({ title: 'Final Confirmation', msg: 'Second confirmation required.\n\nThis will wipe all data and cannot be undone. Proceed?', type: 'danger', okLabel: 'Permanently Delete Everything' })) return;
   toast('Clearing all data...', 'info');
 
-  const CLEAR_KEYS = ['customers','invoices','payments','creditNotes'];
+  const CLEAR_KEYS = ['dealers','purchases','purchpayments','debitNotes','customers','invoices','payments','creditNotes','expenses'];
   CLEAR_KEYS.forEach(k => {
     DB[k] = [];
     try { localStorage.removeItem('mauli_' + k); } catch(e) {}
@@ -6104,7 +6108,7 @@ async function clearTestData() {
         if (error) { console.warn('Delete error', key, error.message); errors++; }
       } catch(e) { console.warn('Delete error', key, e); errors++; }
     }
-    addLog('delete', 'Dev cleared all data (customers, invoices, payments, credit notes)');
+    addLog('delete', 'Dev cleared all data (dealers, purchases, payments, debit notes, customers, invoices, receipts, credit notes, expenses)');
     try { await save('log'); } catch(e) {}
     startRealtimeListeners();
     if (errors > 0) {
