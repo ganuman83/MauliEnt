@@ -1563,19 +1563,19 @@ let _db = null;
 // Collections stored in Supabase (also used as table names)
 const FS_COLLECTIONS = ['customers','invoices','payments','creditNotes','expenses','log','users','dealers','purchases','purchpayments','debitNotes'];
 
-// Maps JS camelCase DB keys to actual Supabase table names (snake_case)
+// Maps JS camelCase DB keys to actual Supabase table names
 const TABLE_MAP = {
   customers:    'customers',
   invoices:     'invoices',
   payments:     'payments',
-  creditNotes:  'credit_notes',
+  creditNotes:  'creditNotes',
   expenses:     'expenses',
   log:          'log',
   users:        'users',
   dealers:      'dealers',
   purchases:    'purchases',
-  purchpayments:'purchase_payments',
-  debitNotes:   'debit_notes'
+  purchpayments:'purchpayments',
+  debitNotes:   'debitnotes'
 };
 function tbl(key) { return TABLE_MAP[key] || key; }
 // These stay local only
