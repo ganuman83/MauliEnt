@@ -1562,6 +1562,22 @@ let _db = null;
 
 // Collections stored in Supabase (also used as table names)
 const FS_COLLECTIONS = ['customers','invoices','payments','creditNotes','expenses','log','users','dealers','purchases','purchpayments','debitNotes'];
+
+// Maps JS camelCase DB keys to actual Supabase table names (snake_case)
+const TABLE_MAP = {
+  customers:    'customers',
+  invoices:     'invoices',
+  payments:     'payments',
+  creditNotes:  'credit_notes',
+  expenses:     'expenses',
+  log:          'log',
+  users:        'users',
+  dealers:      'dealers',
+  purchases:    'purchases',
+  purchpayments:'purchase_payments',
+  debitNotes:   'debit_notes'
+};
+function tbl(key) { return TABLE_MAP[key] || key; }
 // These stay local only
 const LOCAL_KEYS = {
   backupHistory: 'mauli_backup_history'
@@ -1604,8 +1620,8 @@ async function save(key) {
   const items = DB[key];
   if (!Array.isArray(items)) return;
 
-  // Supabase table name — creditNotes uses quoted name
-  const table = key;
+  // Supabase table name — use TABLE_MAP for snake_case table names
+  const table = tbl(key);
   updateSyncStatus('syncing');
 
   // Try up to 3 times with delay
@@ -1706,7 +1722,7 @@ async function load() {
       let allRows = [];
       let from = 0;
       while (true) {
-        const { data, error } = await _db.from(key).select('*').range(from, from + PAGE - 1);
+        const { data, error } = await _db.from(tbl(key)).select('*').range(from, from + PAGE - 1);
         if (error) throw new Error(`Load ${key}: ${error.message}`);
         if (data && data.length > 0) allRows = allRows.concat(data);
         if (!data || data.length < PAGE) break; // last page
@@ -1769,7 +1785,7 @@ async function migrateFromLocalStorage() {
       if (!DB[key].length) continue;
       const CHUNK = 400;
       for (let i = 0; i < DB[key].length; i += CHUNK) {
-        const { error } = await _db.from(key).upsert(DB[key].slice(i, i + CHUNK), { onConflict: 'id' });
+        const { error } = await _db.from(tbl(key)).upsert(DB[key].slice(i, i + CHUNK), { onConflict: 'id' });
         if (error) throw new Error(error.message);
       }
     }
@@ -1781,7 +1797,7 @@ async function migrateFromLocalStorage() {
 async function deleteDoc(key, id) {
   if (!_db) return;
   try {
-    const { error } = await _db.from(key).delete().eq('id', id);
+    const { error } = await _db.from(tbl(key)).delete().eq('id', id);
     if (error) throw new Error(error.message);
   } catch(e) {
     console.error('Supabase delete error:', e);
@@ -1799,13 +1815,13 @@ function startRealtimeListeners() {
   liveKeys.forEach(key => {
     const channel = _db
       .channel('table-changes-' + key)
-      .on('postgres_changes', { event: '*', schema: 'public', table: key }, async () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: tbl(key) }, async () => {
         // Re-fetch the full table on any change — paginated to bypass 1000-row limit
         const PAGE = 1000;
         let allRows = [];
         let from = 0;
         while (true) {
-          const { data, error } = await _db.from(key).select('*').range(from, from + PAGE - 1);
+          const { data, error } = await _db.from(tbl(key)).select('*').range(from, from + PAGE - 1);
           if (error || !currentUser) break;
           if (data && data.length > 0) allRows = allRows.concat(data);
           if (!data || data.length < PAGE) break;
@@ -4190,9 +4206,9 @@ async function restoreBackup(input) {
     // save() uses upsert which only adds/updates — rows absent from the backup JSON
     // would survive in Supabase and corrupt the dataset after the next page refresh.
     if (_db) {
-      for (const tbl of ['customers', 'invoices', 'payments']) {
-        const { error } = await _db.from(tbl).delete().neq('id', 0);
-        if (error) console.warn(`Clear ${tbl} error:`, error.message);
+      for (const k of ['customers', 'invoices', 'payments']) {
+        const { error } = await _db.from(tbl(k)).delete().neq('id', 0);
+        if (error) console.warn(`Clear ${k} error:`, error.message);
       }
     }
 
@@ -4230,7 +4246,7 @@ async function restoreSingleJSON(input, collectionKey) {
   if (!file) return;
   if (!file.name.endsWith('.json')) { toast('Please select a valid .json file.', 'error'); input.value = ''; return; }
 
-  const labels = { customers: 'Customers', invoices: 'Invoices', payments: 'Payments', creditNotes: 'Credit Notes', expenses: 'Expenses' };
+  const labels = { dealers: 'Dealers', purchases: 'Purchases', purchpayments: 'Payments', debitNotes: 'Debit Notes', customers: 'Customers', invoices: 'Invoices', payments: 'Receipts', creditNotes: 'Credit Notes', expenses: 'Expenses' };
   const label  = labels[collectionKey] || collectionKey;
 
   if (!await confirmDialog({ title: `Import ${label} Data`, msg: `This will OVERWRITE all current ${label} data with:\n"${file.name}"\n\nAll other data (${Object.values(labels).filter(l=>l!==label).join(', ')}) will remain unchanged.\n\nAre you sure?`, type: 'warning', okLabel: 'Yes, Import' })) {
@@ -4255,14 +4271,14 @@ async function restoreSingleJSON(input, collectionKey) {
       // ── FIX: DELETE all existing rows first so stale records don't survive the restore.
       // upsert alone only adds/updates; rows present in Supabase but absent from the
       // backup JSON would remain, corrupting the dataset after the next page refresh.
-      const { error: delError } = await _db.from(collectionKey).delete().neq('id', 0);
+      const { error: delError } = await _db.from(tbl(collectionKey)).delete().neq('id', 0);
       if (delError) throw new Error('Clear existing data failed: ' + delError.message);
 
       // Chunked UPSERT — handles both small and large collections uniformly
       const CHUNK = 400;
       for (let i = 0; i < data.length; i += CHUNK) {
         const chunk = data.slice(i, i + CHUNK);
-        const { error } = await _db.from(collectionKey).upsert(chunk, { onConflict: 'id' });
+        const { error } = await _db.from(tbl(collectionKey)).upsert(chunk, { onConflict: 'id' });
         if (error) throw new Error(error.message);
       }
 
@@ -4372,7 +4388,7 @@ async function saveChunked(key, newItems) {
   updateSyncStatus('syncing');
   for (let i = 0; i < total; i += CHUNK) {
     const chunk = newItems.slice(i, i + CHUNK);
-    const { error } = await _db.from(key).upsert(chunk, { onConflict: 'id' });
+    const { error } = await _db.from(tbl(key)).upsert(chunk, { onConflict: 'id' });
     if (error) { console.error('Supabase chunked save error:', error.message); }
     const pct = Math.min(100, Math.round(((i + chunk.length) / total) * 100));
     setImportProgress(
@@ -6073,7 +6089,7 @@ async function clearCollection(key) {
 
   if (_db) {
     try {
-      const { error } = await _db.from(key).delete().gt('id', 0);
+      const { error } = await _db.from(tbl(key)).delete().gt('id', 0);
       if (error) throw new Error(error.message);
       addLog('delete', `Dev deleted all ${label}`);
       try { await save('log'); } catch(e) {}
@@ -6104,7 +6120,7 @@ async function clearTestData() {
     let errors = 0;
     for (const key of CLEAR_KEYS) {
       try {
-        const { error } = await _db.from(key).delete().gt('id', 0);
+        const { error } = await _db.from(tbl(key)).delete().gt('id', 0);
         if (error) { console.warn('Delete error', key, error.message); errors++; }
       } catch(e) { console.warn('Delete error', key, e); errors++; }
     }
