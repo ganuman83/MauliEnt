@@ -7556,7 +7556,7 @@ function renderDebitNotes() {
 
   const allDNs = DB.debitNotes || [];
   document.getElementById('dn-stat-count').textContent = allDNs.length;
-  document.getElementById('dn-stat-total').textContent = '&#8377;' + fmt(allDNs.reduce((s,dn) => s + parseFloat(dn.amount||0), 0));
+  document.getElementById('dn-stat-total').textContent = '₹' + fmt(allDNs.reduce((s,dn) => s + parseFloat(dn.amount||0), 0));
 
   if (!list.length) {
     tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">&#128203;</div><p>No debit notes found.</p></div></td></tr>`;
