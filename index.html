@@ -657,16 +657,17 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
           </div>
           <div style="background:var(--input-bg);border:1px solid var(--border);border-radius:10px;padding:14px;display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px">
             <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="dashboard"> 📊 Dashboard</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="customers"> 👥 Customers</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="invoices"> 🧾 Invoices</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="payments"> 💳 Payments</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="overdue"> ⚠ Overdue</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="creditnotes"> 📝 Credit Notes</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="ledger"> 📒 Ledger</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="expenses"> 💸 Expenses</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="dealers"> 🏪 Dealers</label>
             <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="purchases"> 🛒 Purchases</label>
-            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="purchpayments"> 💰 Payments (Purchase)</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="purchpayments"> 💰 Payments</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="debitnotes"> 📋 Debit Notes</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="customers"> 👥 Customers</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="invoices"> 🧾 Sales</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="payments"> 💳 Receipts</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="creditnotes"> 📝 Credit Notes</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="expenses"> 💸 Expenses</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="ledger"> 📒 Ledger</label>
+            <label style="display:flex;align-items:center;gap:8px;font-size:0.85rem;cursor:pointer"><input type="checkbox" class="tab-access-cb" value="overdue"> ⚠ Overdue</label>
           </div>
           <div style="font-size:0.75rem;color:var(--muted);margin-top:6px">ℹ Select which tabs this user can see. At least one tab required.</div>
         </div>
@@ -1575,7 +1576,7 @@ const TABLE_MAP = {
   dealers:      'dealers',
   purchases:    'purchases',
   purchpayments:'purchpayments',
-  debitNotes:   'debitnotes'
+  debitNotes:   'debit_notes'
 };
 function tbl(key) { return TABLE_MAP[key] || key; }
 // These stay local only
@@ -2231,7 +2232,7 @@ function applyRoleAccess(role, user) {
 
   if (role === 'emp' || role === 'admin') {
     const defaultTabs = role === 'admin'
-      ? ['dashboard','dealers','purchases','purchpayments','customers','invoices','payments','overdue','creditnotes','ledger','expenses']
+      ? ['dashboard','dealers','purchases','purchpayments','debitnotes','customers','invoices','payments','overdue','creditnotes','ledger','expenses']
       : ['invoices'];
     const tabAccess = (resolvedUser?.tabAccess && resolvedUser.tabAccess.length > 0)
       ? resolvedUser.tabAccess : defaultTabs;
@@ -3928,7 +3929,7 @@ function openUserForm(id=null) {
   // Load saved tabAccess into checkboxes (or defaults per role)
   const role = u?.role || '';
   const defaultTabs = role === 'admin'
-    ? ['dashboard','customers','invoices','payments','overdue','creditnotes','ledger']
+    ? ['dashboard','dealers','purchases','purchpayments','debitnotes','customers','invoices','payments','overdue','creditnotes','ledger']
     : ['invoices'];
   const tabAccess = (u?.tabAccess && u.tabAccess.length > 0) ? u.tabAccess : defaultTabs;
   document.querySelectorAll('.tab-access-cb').forEach(cb => {
@@ -4118,6 +4119,8 @@ async function downloadFullBackup() {
   zip.file('debit_notes.json', JSON.stringify(DB.debitNotes || [], null, 2));
   zip.file('invoices.json', JSON.stringify(DB.invoices, null, 2));
   zip.file('payments.json', JSON.stringify(DB.payments, null, 2));
+  zip.file('credit_notes.json', JSON.stringify(DB.creditNotes || [], null, 2));
+  zip.file('expenses.json', JSON.stringify(DB.expenses || [], null, 2));
   zip.file('overdue_summary.json', JSON.stringify(overdueSummary, null, 2));
   zip.file('activity_log.json', JSON.stringify(DB.log, null, 2));
   zip.file('users.json', JSON.stringify(DB.users.map(u => ({ ...u, passwordHash: '***HIDDEN***' })), null, 2));
@@ -4126,10 +4129,15 @@ async function downloadFullBackup() {
     backupDate: new Date().toISOString(),
     backupName: fname,
     counts: {
+      dealers: (DB.dealers||[]).length,
+      purchases: (DB.purchases||[]).length,
+      purchpayments: (DB.purchpayments||[]).length,
+      debitNotes: (DB.debitNotes||[]).length,
       customers: DB.customers.length,
       invoices: DB.invoices.length,
       payments: DB.payments.length,
-      overdueInvoices: overdueSummary.length
+      creditNotes: (DB.creditNotes||[]).length,
+      expenses: (DB.expenses||[]).length
     }
   }, null, 2));
 
@@ -4178,7 +4186,7 @@ async function restoreBackup(input) {
   if (!file) return;
   if (!file.name.endsWith('.zip')) return toast('Please select a valid .zip backup file.', 'error');
 
-  if (!await confirmDialog({ title: 'Restore from Backup', msg: '⚠ This will OVERWRITE all current data with the selected backup file.\n\nAll existing customers, invoices, payments and credit notes will be replaced.\n\nAre you sure?', type: 'warning', okLabel: 'Yes, Restore' })) {
+  if (!await confirmDialog({ title: 'Restore from Backup', msg: '⚠ This will OVERWRITE all current data with the selected backup file.\n\nAll existing data (dealers, purchases, payments, customers, invoices, receipts, credit notes, expenses) will be replaced.\n\nAre you sure?', type: 'warning', okLabel: 'Yes, Restore' })) {
     input.value = '';
     return;
   }
@@ -4194,33 +4202,42 @@ async function restoreBackup(input) {
       return JSON.parse(txt);
     };
 
-    const customers = await readJSON('customers.json');
-    const invoices = await readJSON('invoices.json');
-    const payments = await readJSON('payments.json');
-    const log = await readJSON('activity_log.json');
+    const dealers       = await readJSON('dealers.json');
+    const purchases     = await readJSON('purchases.json');
+    const purchpayments = await readJSON('purchase_payments.json');
+    const debitNotes    = await readJSON('debit_notes.json');
+    const customers     = await readJSON('customers.json');
+    const invoices      = await readJSON('invoices.json');
+    const payments      = await readJSON('payments.json');
+    const creditNotes   = await readJSON('credit_notes.json');
+    const expenses      = await readJSON('expenses.json');
+    const log           = await readJSON('activity_log.json');
 
     // Stop realtime listeners during restore to prevent mid-save re-fetch from overwriting data
     stopRealtimeListeners();
 
-    // ── FIX: DELETE existing rows before saving backup data.
-    // save() uses upsert which only adds/updates — rows absent from the backup JSON
-    // would survive in Supabase and corrupt the dataset after the next page refresh.
+    // DELETE existing rows before saving backup data — upsert alone leaves stale rows
     if (_db) {
-      for (const k of ['customers', 'invoices', 'payments']) {
+      for (const k of ['dealers','purchases','purchpayments','debitNotes','customers','invoices','payments','creditNotes','expenses']) {
         const { error } = await _db.from(tbl(k)).delete().neq('id', 0);
         if (error) console.warn(`Clear ${k} error:`, error.message);
       }
     }
 
-    if (customers) { DB.customers = customers; await save('customers'); }
-    if (invoices)  { DB.invoices  = invoices;  await save('invoices'); }
-    if (payments)  {
-      // Deduplicate by id before restoring — backup file may contain duplicates
+    if (dealers)       { DB.dealers       = dealers;       await save('dealers'); }
+    if (purchases)     { DB.purchases     = purchases;     await save('purchases'); }
+    if (purchpayments) { DB.purchpayments = purchpayments; await save('purchpayments'); }
+    if (debitNotes)    { DB.debitNotes    = debitNotes;    await save('debitNotes'); }
+    if (customers)     { DB.customers     = customers;     await save('customers'); }
+    if (invoices)      { DB.invoices      = invoices;      await save('invoices'); }
+    if (payments)      {
       const seen = new Set();
       DB.payments = payments.filter(p => { const k = String(p.id); if (seen.has(k)) return false; seen.add(k); return true; });
       await save('payments');
     }
-    if (log)       { DB.log = log; }
+    if (creditNotes)   { DB.creditNotes   = creditNotes;   await save('creditNotes'); }
+    if (expenses)      { DB.expenses      = expenses;      await save('expenses'); }
+    if (log)           { DB.log = log; }
 
     await addLog('edit', `Data restored from backup: ${file.name}`);
     await save('log');
@@ -5295,12 +5312,12 @@ function exportStyledXLSX(data, filename, sheetLabel) {
 const GITHUB_TEMPLATES = {
   customers:    'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Customers_Template.xlsx',
   invoices:     'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Invoices_Template.xlsx',
-  payments:     'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Payments_Template.xlsx',
+  payments:     'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Receipts_Template.xlsx',
   expenses:     'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Expenses_Template.xlsx',
   creditnotes:  'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_CreditNotes_Template.xlsx',
   dealers:      'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Dealers_Template.xlsx',
   purchases:    'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Purchases_Template.xlsx',
-  purchpayments:'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_PurchasePayments_Template.xlsx',
+  purchpayments:'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Payments_Template.xlsx',
   debitnotes:   'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_DebitNotes_Template.xlsx'
 };
 
@@ -5319,7 +5336,7 @@ async function downloadTemplate(type) {
   const fileNames = {
     customers:   'MauliEnt_Customers_Template.xlsx',
     invoices:    'MauliEnt_Invoices_Template.xlsx',
-    payments:    'MauliEnt_Payments_Template.xlsx',
+    payments:    'MauliEnt_Receipts_Template.xlsx',
     expenses:    'MauliEnt_Expenses_Template.xlsx',
     creditnotes: 'MauliEnt_CreditNotes_Template.xlsx'
   };
@@ -5371,7 +5388,7 @@ function _generateTemplateLocally(type) {
   } else if (type === 'purchpayments') {
     headers   = ['Receipt No *','Dealer *','Amount *','Payment Date *','Mode *','Bill No *','Reference/UTR','Notes'];
     warnRow   = ['⚠  Columns marked * are MANDATORY. Mode: Cash / UPI / NEFT/IMPS / Cheque. Date: YYYY-MM-DD.'];
-    filename  = 'MauliEnt_PurchasePayments_Template.xlsx';
+    filename  = 'MauliEnt_Payments_Template.xlsx';
     sheetName = 'Purchase Payments';
     colWidths = [{wch:16},{wch:30},{wch:12},{wch:14},{wch:12},{wch:18},{wch:20},{wch:25}];
   } else if (type === 'debitnotes') {
@@ -5537,7 +5554,7 @@ function _downloadTemplate_OLD_UNUSED(type) {
     wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Payments Import');
     XLSX.utils.book_append_sheet(wb, wsHelp, 'Help');
-    XLSX.writeFile(wb, 'MauliEnt_Payments_Template.xlsx');
+    XLSX.writeFile(wb, 'MauliEnt_Receipts_Template.xlsx');
 
   } else if (type === 'creditnotes') {
     headers = ['CN No *','Customer *','Invoice No *','Date *','Amount *','Reason *','Notes'];
