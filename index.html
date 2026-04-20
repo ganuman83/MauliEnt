@@ -342,6 +342,7 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
     <button class="nav-btn" onclick="showTab('dealers',this)">🏪 Dealers</button>
     <button class="nav-btn" onclick="showTab('purchases',this)">🛒 Purchases</button>
     <button class="nav-btn" onclick="showTab('purchpayments',this)">💰 Payments</button>
+    <button class="nav-btn" onclick="showTab('debitnotes',this)">📋 Debit Notes</button>
     <button class="nav-btn" onclick="showTab('customers',this)">👥 Customers</button>
     <button class="nav-btn" onclick="showTab('invoices',this)">🧾 Sales</button>
     <button class="nav-btn" onclick="showTab('payments',this)">💳 Receipts</button>
@@ -713,6 +714,10 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('payments')">💳 Payments JSON</button>
             <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('creditNotes')">📝 Credit Notes JSON</button>
             <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('expenses')">💸 Expenses JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('dealers')">🏪 Dealers JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('purchases')">🛒 Purchases JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('purchpayments')">💰 Purchase Payments JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="downloadSingleBackup('debitNotes')">📋 Debit Notes JSON</button>
 
           </div>
         </div>
@@ -753,12 +758,20 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-payments').click()">💳 Import Payments JSON</button>
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-creditNotes').click()">📝 Import Credit Notes JSON</button>
             <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-expenses').click()">💸 Import Expenses JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-dealers').click()">🏪 Import Dealers JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-purchases').click()">🛒 Import Purchases JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-purchpayments').click()">💰 Import Purchase Payments JSON</button>
+            <button class="btn btn-outline btn-sm" onclick="document.getElementById('json-import-debitNotes').click()">📋 Import Debit Notes JSON</button>
           </div>
-          <input type="file" id="json-import-customers"   accept=".json" style="display:none" onchange="restoreSingleJSON(this,'customers')">
-          <input type="file" id="json-import-invoices"    accept=".json" style="display:none" onchange="restoreSingleJSON(this,'invoices')">
-          <input type="file" id="json-import-payments"    accept=".json" style="display:none" onchange="restoreSingleJSON(this,'payments')">
-          <input type="file" id="json-import-creditNotes" accept=".json" style="display:none" onchange="restoreSingleJSON(this,'creditNotes')">
-          <input type="file" id="json-import-expenses"    accept=".json" style="display:none" onchange="restoreSingleJSON(this,'expenses')">
+          <input type="file" id="json-import-customers"    accept=".json" style="display:none" onchange="restoreSingleJSON(this,'customers')">
+          <input type="file" id="json-import-invoices"     accept=".json" style="display:none" onchange="restoreSingleJSON(this,'invoices')">
+          <input type="file" id="json-import-payments"     accept=".json" style="display:none" onchange="restoreSingleJSON(this,'payments')">
+          <input type="file" id="json-import-creditNotes"  accept=".json" style="display:none" onchange="restoreSingleJSON(this,'creditNotes')">
+          <input type="file" id="json-import-expenses"     accept=".json" style="display:none" onchange="restoreSingleJSON(this,'expenses')">
+          <input type="file" id="json-import-dealers"      accept=".json" style="display:none" onchange="restoreSingleJSON(this,'dealers')">
+          <input type="file" id="json-import-purchases"    accept=".json" style="display:none" onchange="restoreSingleJSON(this,'purchases')">
+          <input type="file" id="json-import-purchpayments" accept=".json" style="display:none" onchange="restoreSingleJSON(this,'purchpayments')">
+          <input type="file" id="json-import-debitNotes"   accept=".json" style="display:none" onchange="restoreSingleJSON(this,'debitNotes')">
           <div class="backup-info">
             <strong>ℹ Tip:</strong> Use files exported from <em>Selective Backup</em> above (e.g. <code>customers_…json</code>). Only the selected collection will be overwritten; all other data stays intact.
           </div>
@@ -881,8 +894,270 @@ hr.divider{border:none;border-top:1px solid var(--border);margin:20px 0}
       </div>
     </div>
 
+    <!-- Dealers Tab -->
+    <div class="tab-panel" id="tab-dealers">
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title">🏪 Dealers</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm dev-only" onclick="openImportModal('dealers')">📥 Import</button>
+          <button class="btn-icon-dl dev-only" onclick="downloadTemplate('dealers')" title="Download Template"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+          <button class="btn btn-outline btn-sm" onclick="exportDealers()">📤 Export</button>
+          <button class="btn btn-primary btn-sm" onclick="openDealerModal()">➕ Add Dealer</button>
+        </div>
+      </div>
+      <div class="filter-bar">
+        <input class="search-input" placeholder="Search dealers..." id="dealer-search" oninput="renderDealers()" style="min-width:200px">
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>#</th><th>Name</th><th>Phone</th><th>Email</th><th>Pincode</th><th>Company</th><th>GST</th><th>Credit Days</th><th>Actions</th></tr></thead>
+        <tbody id="dealer-table"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Purchases Tab -->
+    <div class="tab-panel" id="tab-purchases">
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title">🛒 Purchases</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm dev-only" onclick="openImportModal('purchases')">📥 Import</button>
+          <button class="btn-icon-dl dev-only" onclick="downloadTemplate('purchases')" title="Download Template"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+          <button class="btn btn-outline btn-sm" onclick="exportPurchases()">📤 Export</button>
+          <button class="btn btn-primary btn-sm" onclick="openPurchaseModal()">➕ New Purchase</button>
+        </div>
+      </div>
+      <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
+        <select class="filter-btn" id="pur-fy-filter" onchange="renderPurchases()" style="min-width:140px;font-weight:600;color:var(--accent);border-color:var(--accent)">
+          <option value="all">All Years</option>
+        </select>
+        <input class="search-input" placeholder="Search purchases..." id="pur-search" oninput="renderPurchases()" style="min-width:160px">
+        <select class="filter-btn" id="pur-dealer-filter" onchange="renderPurchases()" style="min-width:160px">
+          <option value="">All Dealers</option>
+        </select>
+        <select class="filter-btn" id="pur-status-filter" onchange="renderPurchases()" style="min-width:110px">
+          <option value="">All Status</option>
+          <option value="pending">Pending</option>
+          <option value="partial">Partial</option>
+          <option value="paid">Paid</option>
+          <option value="overdue">Overdue</option>
+        </select>
+        <input type="date" id="pur-date-from" class="filter-btn" onchange="renderPurchases()" style="min-width:140px;padding:7px 10px" title="From date">
+        <span style="color:var(--muted);font-size:0.82rem">to</span>
+        <input type="date" id="pur-date-to" class="filter-btn" onchange="renderPurchases()" style="min-width:140px;padding:7px 10px" title="To date">
+        <button class="filter-btn" onclick="clearPurDateFilter()" style="padding:7px 10px">✕ All Dates</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Bill No</th><th>Dealer</th><th>Date</th><th>Due Date</th><th>Amount</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead>
+        <tbody id="pur-table"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Purchase Payments Tab -->
+    <div class="tab-panel" id="tab-purchpayments">
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title">💰 Purchase Payments</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm dev-only" onclick="openImportModal('purchpayments')">📥 Import</button>
+          <button class="btn-icon-dl dev-only" onclick="downloadTemplate('purchpayments')" title="Download Template"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+          <button class="btn btn-outline btn-sm" onclick="exportPurchPayments()">📤 Export</button>
+          <button class="btn btn-primary btn-sm" onclick="openPurchPaymentModal()">➕ Record Payment</button>
+        </div>
+      </div>
+      <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
+        <select class="filter-btn" id="pp-fy-filter" onchange="renderPurchPayments()" style="min-width:140px;font-weight:600;color:var(--accent);border-color:var(--accent)">
+          <option value="all">All Years</option>
+        </select>
+        <input class="search-input" placeholder="Search payments..." id="pp-search" oninput="renderPurchPayments()" style="min-width:160px">
+        <select class="filter-btn" id="pp-dealer-filter" onchange="renderPurchPayments()" style="min-width:160px">
+          <option value="">All Dealers</option>
+        </select>
+        <select class="filter-btn" id="pp-method-filter" onchange="renderPurchPayments()" style="min-width:110px">
+          <option value="">All Methods</option>
+          <option value="Cash">Cash</option>
+          <option value="UPI">UPI</option>
+          <option value="NEFT/IMPS">NEFT/IMPS</option>
+          <option value="Cheque">Cheque</option>
+        </select>
+        <input type="date" id="pp-date-from" class="filter-btn" onchange="renderPurchPayments()" style="min-width:140px;padding:7px 10px" title="From date">
+        <span style="color:var(--muted);font-size:0.82rem">to</span>
+        <input type="date" id="pp-date-to" class="filter-btn" onchange="renderPurchPayments()" style="min-width:140px;padding:7px 10px" title="To date">
+        <button class="filter-btn" onclick="clearPPDateFilter()" style="padding:7px 10px">✕ All Dates</button>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Date</th><th>Dealer</th><th>Bill No</th><th>Receipt No</th><th>Amount</th><th>Method</th><th>Reference</th><th>Notes</th><th>Actions</th></tr></thead>
+        <tbody id="pp-table"></tbody>
+      </table></div>
+    </div>
+
+    <!-- Debit Notes Tab -->
+    <div class="tab-panel" id="tab-debitnotes">
+      <div class="section-header" style="margin-bottom:16px">
+        <div class="section-title">📋 Debit Notes</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="btn btn-outline btn-sm dev-only" onclick="openImportModal('debitnotes')">📥 Import</button>
+          <button class="btn-icon-dl dev-only" onclick="downloadTemplate('debitnotes')" title="Download Template"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v13M7 11l5 5 5-5"/><path d="M5 20h14"/></svg></button>
+          <button class="btn btn-outline btn-sm" onclick="exportDebitNotes()">📤 Export</button>
+          <button class="btn btn-primary btn-sm" onclick="openDebitNoteModal()">➕ New Debit Note</button>
+        </div>
+      </div>
+      <div class="filter-bar" style="flex-wrap:wrap;gap:8px;align-items:center">
+        <select class="filter-btn" id="dn-fy-filter" onchange="renderDebitNotes()" style="min-width:140px;font-weight:600;color:var(--accent);border-color:var(--accent)">
+          <option value="all">All Years</option>
+        </select>
+        <input class="search-input" placeholder="Search debit notes..." id="dn-search" oninput="renderDebitNotes()" style="min-width:160px">
+        <select class="filter-btn" id="dn-dealer-filter" onchange="renderDebitNotes()" style="min-width:160px">
+          <option value="">All Dealers</option>
+        </select>
+        <select class="filter-btn" id="dn-reason-filter" onchange="renderDebitNotes()" style="min-width:130px">
+          <option value="">All Reasons</option>
+          <option value="Return">Goods Return</option>
+          <option value="Discount">Discount</option>
+          <option value="Correction">Price Correction</option>
+          <option value="Damaged">Damaged Goods</option>
+          <option value="Other">Other</option>
+        </select>
+        <input type="date" id="dn-date-from" class="filter-btn" onchange="renderDebitNotes()" style="min-width:140px;padding:7px 10px" title="From date">
+        <span style="color:var(--muted);font-size:0.82rem">to</span>
+        <input type="date" id="dn-date-to" class="filter-btn" onchange="renderDebitNotes()" style="min-width:140px;padding:7px 10px" title="To date">
+        <button class="filter-btn" onclick="clearDNDateFilter()" style="padding:7px 10px">✕ All Dates</button>
+      </div>
+      <div class="stat-grid" style="margin:12px 0">
+        <div class="stat-card blue"><div class="stat-label">Total Debit Notes</div><div class="stat-value" id="dn-stat-count">0</div><div class="stat-sub">All time</div></div>
+        <div class="stat-card red"><div class="stat-label">Total Debit Amount</div><div class="stat-value" id="dn-stat-total">₹0</div><div class="stat-sub">Reduces purchase balances</div></div>
+      </div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>DN #</th><th>Date</th><th>Dealer</th><th>Bill No</th><th>Debit Amount</th><th>Reason</th><th>Notes</th><th>Actions</th></tr></thead>
+        <tbody id="dn-table"></tbody>
+      </table></div>
+    </div>
+
   </div><!-- /content -->
 </div><!-- /app -->
+
+<!-- Dealer Modal -->
+<div class="modal-overlay" id="modal-dealer">
+  <div class="modal" style="max-width:560px">
+    <h3 id="dealer-modal-title">Add Dealer</h3>
+    <div class="form-row-2">
+      <div class="form-group"><label>Name *</label><input type="text" id="dl-name" placeholder="Dealer name"></div>
+      <div class="form-group"><label>Phone *</label><input type="tel" id="dl-phone" placeholder="+91 XXXXX XXXXX"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Email</label><input type="email" id="dl-email" placeholder="email@example.com"></div>
+      <div class="form-group"><label>Company</label><input type="text" id="dl-company" placeholder="Company name"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Pincode</label><input type="text" id="dl-city" placeholder="Pincode"></div>
+      <div class="form-group"><label>GST Number</label><input type="text" id="dl-gst" placeholder="GST number"></div>
+    </div>
+    <div class="form-group"><label>Address</label><input type="text" id="dl-address" placeholder="Full address"></div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Credit Days <span style="color:var(--muted);font-size:0.78rem">(default 30)</span></label>
+        <input type="number" id="dl-creditdays" placeholder="30" min="0" value="30">
+      </div>
+      <div></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-dealer')">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-dealer" onclick="saveDealer()">Save Dealer</button>
+    </div>
+  </div>
+</div>
+
+<!-- Purchase Modal -->
+<div class="modal-overlay" id="modal-purchase">
+  <div class="modal" style="max-width:520px">
+    <h3 id="purchase-modal-title">New Purchase</h3>
+    <div class="dup-warning" id="pur-dup-warning" style="display:none">⚠ This bill number already exists!</div>
+    <div class="form-group"><label>Dealer *</label>
+      <select id="pur-dealer-id"><option value="">-- Select Dealer --</option></select>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Bill No *</label><input type="text" id="pur-billno" placeholder="BILL-001" oninput="checkPurDup()"></div>
+      <div class="form-group"><label>Bill Date *</label><input type="date" id="pur-date"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Due Date</label><input type="date" id="pur-duedate"></div>
+      <div class="form-group"><label>Amount (₹) *</label><input type="number" id="pur-amount" placeholder="0.00" min="0" step="0.01"></div>
+    </div>
+    <div class="form-group"><label>Description</label><input type="text" id="pur-desc" placeholder="Purchase description"></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-purchase')">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-purchase" onclick="savePurchase()">Save Purchase</button>
+    </div>
+  </div>
+</div>
+
+<!-- Purchase Payment Modal -->
+<div class="modal-overlay" id="modal-purchpayment">
+  <div class="modal" style="max-width:520px">
+    <h3 id="purchpay-modal-title">Record Purchase Payment</h3>
+    <div class="form-row-2">
+      <div class="form-group"><label>Dealer *</label>
+        <select id="pp-dealer-id" onchange="updatePurBillDropdown()"><option value="">-- Select Dealer --</option></select>
+      </div>
+      <div class="form-group"><label>Bill *</label>
+        <select id="pp-bill-id"><option value="">-- Select Bill --</option></select>
+      </div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Amount (₹) *</label><input type="number" id="pp-amount" placeholder="0.00" min="0" step="0.01"></div>
+      <div class="form-group"><label>Payment Date *</label><input type="date" id="pp-date"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Mode *</label>
+        <select id="pp-mode">
+          <option value="Cash">Cash</option>
+          <option value="UPI">UPI</option>
+          <option value="NEFT/IMPS">NEFT/IMPS</option>
+          <option value="Cheque">Cheque</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Receipt No</label><input type="text" id="pp-receiptno" placeholder="RCP-001"></div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Reference / UTR</label><input type="text" id="pp-ref" placeholder="Optional"></div>
+      <div class="form-group"><label>Notes</label><input type="text" id="pp-notes" placeholder="Optional"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-purchpayment')">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-purchpayment" onclick="savePurchPayment()">Save Payment</button>
+    </div>
+  </div>
+</div>
+
+<!-- Debit Note Modal -->
+<div class="modal-overlay" id="modal-debitnote">
+  <div class="modal" style="max-width:520px">
+    <h3 id="dn-modal-title">New Debit Note</h3>
+    <div class="form-row-2">
+      <div class="form-group"><label>Dealer *</label>
+        <select id="dn-dealer-id" onchange="updateDNBillDropdown()"><option value="">-- Select Dealer --</option></select>
+      </div>
+      <div class="form-group"><label>Bill <span style="color:var(--muted);font-size:0.78rem">(optional)</span></label>
+        <select id="dn-bill-id"><option value="">-- Select Bill --</option></select>
+      </div>
+    </div>
+    <div class="form-row-2">
+      <div class="form-group"><label>Debit Note # *</label><input type="text" id="dn-number" placeholder="DN-001"></div>
+      <div class="form-group"><label>Date *</label><input type="date" id="dn-date"></div>
+    </div>
+    <div class="form-group"><label>Amount (₹) *</label><input type="number" id="dn-amount" placeholder="0.00" min="0" step="0.01"></div>
+    <div class="form-group"><label>Reason *</label>
+      <select id="dn-reason">
+        <option value="Return">Goods Return</option>
+        <option value="Discount">Discount</option>
+        <option value="Correction">Price Correction</option>
+        <option value="Damaged">Damaged Goods</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div class="form-group"><label>Notes <span style="color:var(--muted);font-weight:400">(optional)</span></label><input type="text" id="dn-notes" placeholder="Details..."></div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-debitnote')">Cancel</button>
+      <button class="btn btn-primary" id="btn-save-debitnote" onclick="saveDebitNote()">Save Debit Note</button>
+    </div>
+  </div>
+</div>
 
 <!-- Expense Modal -->
 <div class="modal-overlay" id="modal-expense">
@@ -1267,6 +1542,7 @@ const DB = {
   dealers: [],
   purchases: [],
   purchpayments: [],
+  debitNotes: [],
   backupHistory: []
 };
 
@@ -1281,7 +1557,7 @@ let editingUserId = null;
 let _db = null;
 
 // Collections stored in Supabase (also used as table names)
-const FS_COLLECTIONS = ['customers','invoices','payments','creditNotes','expenses','log','users','dealers','purchases','purchpayments'];
+const FS_COLLECTIONS = ['customers','invoices','payments','creditNotes','expenses','log','users','dealers','purchases','purchpayments','debitNotes'];
 // These stay local only
 const LOCAL_KEYS = {
   backupHistory: 'mauli_backup_history'
@@ -1404,6 +1680,11 @@ function normalizeIds() {
     if (pp.dealerId   != null) pp.dealerId   = Math.round(parseFloat(pp.dealerId));
     if (pp.purchaseId != null) pp.purchaseId = Math.round(parseFloat(pp.purchaseId));
   });
+  (DB.debitNotes || []).forEach(dn => {
+    if (dn.id         != null) dn.id         = Math.round(parseFloat(dn.id));
+    if (dn.dealerId   != null) dn.dealerId   = Math.round(parseFloat(dn.dealerId));
+    if (dn.purchaseId != null) dn.purchaseId = Math.round(parseFloat(dn.purchaseId));
+  });
 }
 
 async function load() {
@@ -1443,7 +1724,8 @@ async function load() {
     normalizeIds();
 
     // One-time migration: if Supabase is empty but localStorage has data, upload it
-    if (DB.customers.length === 0) {
+    const hasAnySupabaseData = FS_COLLECTIONS.some(k => k !== 'log' && k !== 'users' && (DB[k]||[]).length > 0);
+    if (!hasAnySupabaseData) {
       await migrateFromLocalStorage();
     }
 
@@ -1994,9 +2276,10 @@ function showTab(name, btn) {
   if (name === 'users')       renderUsersTable();
   if (name === 'backup')      renderBackupHistory();
   if (name === 'expenses')    renderExpenses();
-  if (name === 'dealers')     renderDealers();
-  if (name === 'purchases')   { updatePurDealerDropdowns(); renderPurchases(); }
+  if (name === 'dealers')       renderDealers();
+  if (name === 'purchases')     { updatePurDealerDropdowns(); renderPurchases(); }
   if (name === 'purchpayments') { updatePurchPayDealerDropdowns(); renderPurchPayments(); }
+  if (name === 'debitnotes')    { updateDNDealerDropdowns(); renderDebitNotes(); }
 }
 
 function toast(msg, type='info') {
@@ -3812,6 +4095,7 @@ async function downloadFullBackup() {
   zip.file('dealers.json', JSON.stringify(DB.dealers || [], null, 2));
   zip.file('purchases.json', JSON.stringify(DB.purchases || [], null, 2));
   zip.file('purchase_payments.json', JSON.stringify(DB.purchpayments || [], null, 2));
+  zip.file('debit_notes.json', JSON.stringify(DB.debitNotes || [], null, 2));
   zip.file('invoices.json', JSON.stringify(DB.invoices, null, 2));
   zip.file('payments.json', JSON.stringify(DB.payments, null, 2));
   zip.file('overdue_summary.json', JSON.stringify(overdueSummary, null, 2));
@@ -3847,15 +4131,16 @@ async function downloadFullBackup() {
 
 function downloadSingleBackup(type) {
   const map = {
-    customers: { data: DB.customers, name: 'customers' },
-    invoices: { data: DB.invoices, name: 'invoices' },
-    payments: { data: DB.payments, name: 'payments' },
-    creditNotes: { data: DB.creditNotes || [], name: 'credit_notes' },
-    expenses: { data: DB.expenses || [], name: 'expenses' },
-    log: { data: DB.log, name: 'activity_log' },
-    dealers: { data: DB.dealers || [], name: 'dealers' },
-    purchases: { data: DB.purchases || [], name: 'purchases' },
-    purchpayments: { data: DB.purchpayments || [], name: 'purchase_payments' }
+    customers:    { data: DB.customers, name: 'customers' },
+    invoices:     { data: DB.invoices, name: 'invoices' },
+    payments:     { data: DB.payments, name: 'payments' },
+    creditNotes:  { data: DB.creditNotes || [], name: 'credit_notes' },
+    expenses:     { data: DB.expenses || [], name: 'expenses' },
+    log:          { data: DB.log, name: 'activity_log' },
+    dealers:      { data: DB.dealers || [], name: 'dealers' },
+    purchases:    { data: DB.purchases || [], name: 'purchases' },
+    purchpayments:{ data: DB.purchpayments || [], name: 'purchase_payments' },
+    debitNotes:   { data: DB.debitNotes || [], name: 'debit_notes' }
   };
   const item = map[type];
   if (!item) return;
@@ -4021,18 +4306,26 @@ function renderBackupHistory() {
 function openImportModal(type) {
   importType = type;
   const titles = {
-    customers:   'Import Customers from Excel',
-    invoices:    'Import Invoices from Excel',
-    payments:    'Import Payments from Excel',
-    creditnotes: 'Import Credit Notes from Excel',
-    expenses:    'Import Expenses from Excel'
+    customers:    'Import Customers from Excel',
+    invoices:     'Import Invoices from Excel',
+    payments:     'Import Payments from Excel',
+    creditnotes:  'Import Credit Notes from Excel',
+    expenses:     'Import Expenses from Excel',
+    dealers:      'Import Dealers from Excel',
+    purchases:    'Import Purchases from Excel',
+    purchpayments:'Import Purchase Payments from Excel',
+    debitnotes:   'Import Debit Notes from Excel'
   };
   const cols = {
-    customers:   'Required columns: Name*, Phone*, Email, Company, Pincode, Address, GST, CreditDays, WhatsappReminder, EmailReminder',
-    invoices:    'Required columns: CustomerName*, InvoiceNo*, InvoiceDate*, DueDate, Amount*, Description',
-    payments:    'Required columns: Receipt No*, Customer*, Amount*, Payment Date*, Mode of Payment*, Invoice No*, Cash Disc, Adjust Amt, Reference/UTR, Notes',
-    creditnotes: 'Required columns: CN No*, Customer*, Invoice No*, Date*, Amount*, Reason*, Notes',
-    expenses:    'Required columns: Date*, Category*, Description, Amount*, Mode*, DoneBy'
+    customers:    'Required columns: Name*, Phone*, Email, Company, Pincode, Address, GST, CreditDays, WhatsappReminder, EmailReminder',
+    invoices:     'Required columns: CustomerName*, InvoiceNo*, InvoiceDate*, DueDate, Amount*, Description',
+    payments:     'Required columns: Receipt No*, Customer*, Amount*, Payment Date*, Mode of Payment*, Invoice No*, Cash Disc, Adjust Amt, Reference/UTR, Notes',
+    creditnotes:  'Required columns: CN No*, Customer*, Invoice No*, Date*, Amount*, Reason*, Notes',
+    expenses:     'Required columns: Date*, Category*, Description, Amount*, Mode*, DoneBy',
+    dealers:      'Required columns: Name*, Phone*, Email, Company, Pincode, Address, GST, CreditDays',
+    purchases:    'Required columns: DealerName*, BillNo*, BillDate*, DueDate, Amount*, Description',
+    purchpayments:'Required columns: Receipt No*, Dealer*, Amount*, Payment Date*, Mode*, Bill No*, Reference/UTR, Notes',
+    debitnotes:   'Required columns: DN No*, Dealer*, Bill No, Date*, Amount*, Reason*, Notes'
   };
   document.getElementById('import-title').textContent = titles[type] || 'Import from Excel';
   document.getElementById('import-cols').textContent  = cols[type]   || '';
@@ -4496,6 +4789,37 @@ async function handleImport(input) {
         toast(`✅ Imported ${count} purchase payments!`, 'success');
         return;
 
+      } else if (importType === 'debitnotes') {
+        const newItems = [];
+        let idBase = Date.now();
+        for (const r of rows) {
+          if (!r['DN No'] || !r.Dealer) continue;
+          const d = (DB.dealers||[]).find(d => d.name.toLowerCase() === String(r.Dealer).toLowerCase());
+          if (!d) { toast(`Dealer not found: "${r.Dealer}" — skipping`, 'error'); continue; }
+          const pur = r['Bill No'] ? (DB.purchases||[]).find(p => p.billNo === String(r['Bill No']) && p.dealerId === d.id) : null;
+          const item = {
+            id: Math.round(idBase++), dealerId: d.id,
+            purchaseId: pur ? pur.id : null,
+            dnNumber: String(r['DN No']),
+            date: fmtExcelDate(r.Date),
+            amount: parseFloat(r.Amount)||0,
+            reason: String(r.Reason||'Return').trim(),
+            notes: String(r.Notes||'').trim()
+          };
+          if (!DB.debitNotes) DB.debitNotes = [];
+          DB.debitNotes.push(item);
+          newItems.push(item);
+          count++;
+        }
+        setImportProgress(40, `Uploading ${count} debit notes…`, 'Saving to Supabase');
+        await saveChunked('debitNotes', newItems);
+        addLog('create', `Imported ${count} debit notes from Excel`);
+        setImportProgress(100, '✅ Done!', `${count} debit notes imported`);
+        await new Promise(r => setTimeout(r, 700));
+        closeModal('modal-import'); resetImportModal(); renderAll();
+        toast(`✅ Imported ${count} debit notes!`, 'success');
+        return;
+
       } else if (importType === 'expenses') {
         // Expenses have no unique key like Receipt No — we use Date+Category+Amount+Mode as a composite key for dupe detection
         const expKey = e => `${e.date}|${(e.category||'').toLowerCase()}|${e.amount}|${(e.mode||'').toLowerCase()}`;
@@ -4949,15 +5273,27 @@ function exportStyledXLSX(data, filename, sheetLabel) {
 }
 
 const GITHUB_TEMPLATES = {
-  customers:   'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Customers_Template.xlsx',
-  invoices:    'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Invoices_Template.xlsx',
-  payments:    'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Payments_Template.xlsx',
-  expenses:    'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Expenses_Template.xlsx',
-  creditnotes: 'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_CreditNotes_Template.xlsx'
+  customers:    'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Customers_Template.xlsx',
+  invoices:     'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Invoices_Template.xlsx',
+  payments:     'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Payments_Template.xlsx',
+  expenses:     'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Expenses_Template.xlsx',
+  creditnotes:  'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_CreditNotes_Template.xlsx',
+  dealers:      'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Dealers_Template.xlsx',
+  purchases:    'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_Purchases_Template.xlsx',
+  purchpayments:'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_PurchasePayments_Template.xlsx',
+  debitnotes:   'https://raw.githubusercontent.com/maulienterprises/MauliEnt/main/Templates/MauliEnt_DebitNotes_Template.xlsx'
 };
 
 async function downloadTemplate(type) {
   const url = GITHUB_TEMPLATES[type];
+
+  // For new types not yet on GitHub, generate locally
+  const localTypes = ['dealers','purchases','purchpayments','debitnotes'];
+  if (localTypes.includes(type)) {
+    _generateTemplateLocally(type);
+    return;
+  }
+
   if (!url) { toast('Unknown template type: ' + type, 'error'); return; }
 
   const fileNames = {
@@ -4982,8 +5318,60 @@ async function downloadTemplate(type) {
     toast('Template downloaded ✓', 'success');
   } catch(err) {
     console.error('Template download failed:', err);
-    toast('Could not fetch template from GitHub. Check your internet connection.', 'error');
+    toast('Could not fetch from GitHub — generating locally instead.', 'info');
+    _generateTemplateLocally(type);
   }
+}
+
+function _generateTemplateLocally(type) {
+  const ACCENT = 'FF1A6FD4'; const WHITE = 'FFFFFFFF'; const WARN = 'FFFFF3CD';
+  const styleHdr = (ws, headers) => {
+    headers.forEach((h, i) => {
+      const cell = ws[XLSX.utils.encode_cell({r:0,c:i})];
+      if (!cell) return;
+      cell.s = { fill:{patternType:'solid',fgColor:{rgb:ACCENT}}, font:{bold:true,color:{rgb:WHITE},name:'Arial',sz:10}, alignment:{horizontal:'center',vertical:'center',wrapText:true} };
+    });
+    const w = ws[XLSX.utils.encode_cell({r:1,c:0})];
+    if (w) w.s = { fill:{patternType:'solid',fgColor:{rgb:WARN}}, font:{italic:true,color:{rgb:'FF856404'},name:'Arial',sz:9} };
+  };
+  let headers, warnRow, filename, sheetName, colWidths;
+
+  if (type === 'dealers') {
+    headers   = ['Name *','Phone *','Email','Company','Pincode','Address','GST','CreditDays'];
+    warnRow   = ['⚠  Columns marked * are MANDATORY. Do not rename columns.'];
+    filename  = 'MauliEnt_Dealers_Template.xlsx';
+    sheetName = 'Dealers';
+    colWidths = [{wch:35},{wch:15},{wch:25},{wch:25},{wch:10},{wch:35},{wch:20},{wch:12}];
+  } else if (type === 'purchases') {
+    headers   = ['DealerName *','BillNo *','BillDate *','DueDate','Amount *','Description'];
+    warnRow   = ['⚠  Columns marked * are MANDATORY. DealerName must match exactly. Date format: YYYY-MM-DD.'];
+    filename  = 'MauliEnt_Purchases_Template.xlsx';
+    sheetName = 'Purchases';
+    colWidths = [{wch:35},{wch:18},{wch:14},{wch:14},{wch:12},{wch:30}];
+  } else if (type === 'purchpayments') {
+    headers   = ['Receipt No *','Dealer *','Amount *','Payment Date *','Mode *','Bill No *','Reference/UTR','Notes'];
+    warnRow   = ['⚠  Columns marked * are MANDATORY. Mode: Cash / UPI / NEFT/IMPS / Cheque. Date: YYYY-MM-DD.'];
+    filename  = 'MauliEnt_PurchasePayments_Template.xlsx';
+    sheetName = 'Purchase Payments';
+    colWidths = [{wch:16},{wch:30},{wch:12},{wch:14},{wch:12},{wch:18},{wch:20},{wch:25}];
+  } else if (type === 'debitnotes') {
+    headers   = ['DN No *','Dealer *','Bill No','Date *','Amount *','Reason *','Notes'];
+    warnRow   = ['⚠  Columns marked * are MANDATORY. Reason: Return / Discount / Correction / Damaged / Other. Date: YYYY-MM-DD.'];
+    filename  = 'MauliEnt_DebitNotes_Template.xlsx';
+    sheetName = 'Debit Notes';
+    colWidths = [{wch:14},{wch:30},{wch:18},{wch:14},{wch:12},{wch:14},{wch:25}];
+  } else {
+    toast('Unknown template type: ' + type, 'error');
+    return;
+  }
+
+  const ws = XLSX.utils.aoa_to_sheet([headers, warnRow]);
+  styleHdr(ws, headers);
+  ws['!cols'] = colWidths;
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, sheetName);
+  XLSX.writeFile(wb, filename);
+  toast('Template downloaded ✓', 'success');
 }
 
 function _downloadTemplate_OLD_UNUSED(type) {
@@ -5257,6 +5645,7 @@ function renderAll() {
   if (document.getElementById('tab-dealers')?.classList.contains('active')) renderDealers();
   if (document.getElementById('tab-purchases')?.classList.contains('active')) renderPurchases();
   if (document.getElementById('tab-purchpayments')?.classList.contains('active')) renderPurchPayments();
+  if (document.getElementById('tab-debitnotes')?.classList.contains('active')) renderDebitNotes();
 }
 
 function updateLedgerDropdown() {
@@ -6514,6 +6903,7 @@ function confirmDialog({ title = 'Are you sure?', msg = '', type = 'danger', okL
 })();
 </script>
 
+<script>
 // ─── DEALER CRUD ───────────────────────────────────────────
 let editingDealerId = null;
 let dealerFilter = 'all';
@@ -6642,9 +7032,13 @@ function updatePurDealerDropdowns() {
 }
 
 function getPurchasePaidAmount(purchaseId) {
-  return (DB.purchpayments||[])
+  const payments = (DB.purchpayments||[])
     .filter(p => String(p.purchaseId) === String(purchaseId))
     .reduce((s,p) => s + parseFloat(p.amount||0), 0);
+  const debitNotes = (DB.debitNotes||[])
+    .filter(dn => String(dn.purchaseId) === String(purchaseId))
+    .reduce((s,dn) => s + parseFloat(dn.amount||0), 0);
+  return payments + debitNotes;
 }
 
 function getPurchaseStatus(pur) {
@@ -6957,6 +7351,175 @@ function exportPurchPayments() {
     return { 'Receipt No *': p.receiptNo||'', 'Dealer *': d?.name||'', 'Amount *': parseFloat(p.amount), 'Payment Date *': fmtDateExport(p.date), 'Mode *': p.method, 'Bill No *': pur?.billNo||'', 'Reference/UTR': p.ref||'', 'Notes': p.notes||'' };
   });
   exportStyledXLSX(data, 'PurchasePayments_MauliEnt', 'Purchase Payments');
+}
+
+// ─── DEBIT NOTE CRUD ────────────────────────────────────────
+let editingDebitNoteId = null;
+
+function updateDNDealerDropdowns() {
+  ['dn-dealer-filter','dn-dealer-id'].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    const current = sel.value;
+    sel.innerHTML = (id === 'dn-dealer-filter' ? '<option value="">All Dealers</option>' : '<option value="">-- Select Dealer --</option>') +
+      (DB.dealers||[]).sort((a,b)=>a.name.localeCompare(b.name,'en-IN'))
+        .map(d => `<option value="${d.id}" ${String(d.id)===current?'selected':''}>${d.name}</option>`).join('');
+  });
+}
+
+function updateDNBillDropdown() {
+  const dealerId = document.getElementById('dn-dealer-id')?.value;
+  const sel = document.getElementById('dn-bill-id');
+  if (!sel) return;
+  const bills = (DB.purchases||[]).filter(p => String(p.dealerId) === String(dealerId));
+  sel.innerHTML = '<option value="">-- Select Bill (optional) --</option>' +
+    bills.map(p => `<option value="${p.id}">${p.billNo} — &#8377;${fmt(p.amount)}</option>`).join('');
+}
+
+function getDebitNoteAmount(purchaseId) {
+  return (DB.debitNotes||[])
+    .filter(dn => String(dn.purchaseId) === String(purchaseId))
+    .reduce((s,dn) => s + parseFloat(dn.amount||0), 0);
+}
+
+function openDebitNoteModal(id) {
+  editingDebitNoteId = id || null;
+  const dn = id ? (DB.debitNotes||[]).find(d => d.id === id) : null;
+  document.getElementById('dn-modal-title').textContent = dn ? 'Edit Debit Note' : 'New Debit Note';
+  updateDNDealerDropdowns();
+  if (dn) {
+    document.getElementById('dn-dealer-id').value = dn.dealerId;
+    updateDNBillDropdown();
+    document.getElementById('dn-bill-id').value = dn.purchaseId || '';
+  } else {
+    updateDNBillDropdown();
+  }
+  document.getElementById('dn-number').value  = dn?.dnNumber || '';
+  document.getElementById('dn-date').value    = dn?.date || today();
+  document.getElementById('dn-amount').value  = dn?.amount || '';
+  document.getElementById('dn-reason').value  = dn?.reason || 'Return';
+  document.getElementById('dn-notes').value   = dn?.notes || '';
+  openModal('modal-debitnote');
+}
+
+async function saveDebitNote() {
+  const dealerId   = parseInt(document.getElementById('dn-dealer-id').value);
+  const purchaseId = document.getElementById('dn-bill-id').value ? parseInt(document.getElementById('dn-bill-id').value) : null;
+  const dnNumber   = document.getElementById('dn-number').value.trim();
+  const date       = document.getElementById('dn-date').value;
+  const amount     = parseFloat(document.getElementById('dn-amount').value);
+  const reason     = document.getElementById('dn-reason').value;
+  const notes      = document.getElementById('dn-notes').value.trim();
+  if (!dealerId)             return toast('Select a dealer.', 'error');
+  if (!dnNumber)             return toast('Debit Note number required.', 'error');
+  if (!date)                 return toast('Date required.', 'error');
+  if (isNaN(amount)||amount<=0) return toast('Valid amount required.', 'error');
+  if (!DB.debitNotes) DB.debitNotes = [];
+  const item = { dealerId, purchaseId, dnNumber, date, amount, reason, notes };
+  if (editingDebitNoteId) {
+    const idx = DB.debitNotes.findIndex(d => d.id === editingDebitNoteId);
+    if (idx === -1) return;
+    DB.debitNotes[idx] = { ...DB.debitNotes[idx], ...item };
+    addLog('edit', `Edited Debit Note ${dnNumber}`);
+    toast('Debit Note updated!', 'success');
+  } else {
+    item.id = Date.now();
+    DB.debitNotes.push(item);
+    addLog('create', `Created Debit Note ${dnNumber} &#8377;${fmt(amount)}`);
+    toast('Debit Note saved!', 'success');
+  }
+  save('debitNotes');
+  closeModal('modal-debitnote');
+  renderDebitNotes();
+  renderPurchases();
+}
+
+async function deleteDebitNote(id) {
+  const dn = (DB.debitNotes||[]).find(d => d.id === id);
+  if (!dn) return;
+  if (!await confirmDialog({ title: 'Delete Debit Note', msg: `Delete Debit Note "${dn.dnNumber}"?\nThis cannot be undone.`, type: 'danger', okLabel: 'Delete' })) return;
+  DB.debitNotes = DB.debitNotes.filter(d => d.id !== id);
+  save('debitNotes');
+  deleteDoc('debitNotes', id);
+  addLog('delete', `Deleted Debit Note ${dn.dnNumber}`);
+  toast('Debit Note deleted.', 'error');
+  renderDebitNotes();
+  renderPurchases();
+}
+
+function clearDNDateFilter() {
+  document.getElementById('dn-date-from').value = '';
+  document.getElementById('dn-date-to').value = '';
+  renderDebitNotes();
+}
+
+function renderDebitNotes() {
+  const tbody = document.getElementById('dn-table');
+  if (!tbody) return;
+  updateDNDealerDropdowns();
+  const selectedFY = document.getElementById('dn-fy-filter')?.value || 'all';
+  const search     = document.getElementById('dn-search')?.value.toLowerCase() || '';
+  const dealerF    = document.getElementById('dn-dealer-filter')?.value || '';
+  const reasonF    = document.getElementById('dn-reason-filter')?.value || '';
+  const dateFrom   = document.getElementById('dn-date-from')?.value || '';
+  const dateTo     = document.getElementById('dn-date-to')?.value || '';
+
+  const fyEl = document.getElementById('dn-fy-filter');
+  if (fyEl) {
+    const current = fyEl.value;
+    const fys = [...new Set((DB.debitNotes||[]).map(dn => { try { return getFYTag(dn.date); } catch { return null; } }).filter(Boolean))].sort().reverse();
+    fyEl.innerHTML = '<option value="all">All Years</option>' + fys.map(fy => `<option value="${fy}" ${fy===current?'selected':''}>${fy}</option>`).join('');
+    if (fys.includes(current)) fyEl.value = current;
+  }
+
+  let list = (DB.debitNotes||[]).filter(dn => {
+    if (selectedFY !== 'all') { try { if (getFYTag(dn.date) !== selectedFY) return false; } catch { return false; } }
+    const d   = (DB.dealers||[]).find(d => String(d.id) === String(dn.dealerId));
+    const pur = (DB.purchases||[]).find(p => String(p.id) === String(dn.purchaseId));
+    if (!([dn.dnNumber, d?.name, pur?.billNo, dn.reason, dn.notes].join(' ').toLowerCase().includes(search))) return false;
+    if (dealerF && String(dn.dealerId) !== dealerF) return false;
+    if (reasonF && dn.reason !== reasonF) return false;
+    if (dateFrom && dn.date < dateFrom) return false;
+    if (dateTo   && dn.date > dateTo)   return false;
+    return true;
+  }).sort((a,b) => new Date(b.date) - new Date(a.date));
+
+  const allDNs = DB.debitNotes || [];
+  document.getElementById('dn-stat-count').textContent = allDNs.length;
+  document.getElementById('dn-stat-total').textContent = '&#8377;' + fmt(allDNs.reduce((s,dn) => s + parseFloat(dn.amount||0), 0));
+
+  if (!list.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="icon">&#128203;</div><p>No debit notes found.</p></div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(dn => {
+    const d   = (DB.dealers||[]).find(d => d.id === dn.dealerId);
+    const pur = (DB.purchases||[]).find(p => String(p.id) === String(dn.purchaseId));
+    return `<tr>
+      <td><strong>${dn.dnNumber}</strong></td>
+      <td>${fmtDate(dn.date)}</td>
+      <td>${d?.name||'&#8212;'}</td>
+      <td>${pur?.billNo||'&#8212;'}</td>
+      <td style="color:var(--danger);font-weight:600">&#8377;${fmt(dn.amount)}</td>
+      <td><span class="badge badge-partial">${dn.reason}</span></td>
+      <td style="color:var(--muted);font-size:0.82rem">${dn.notes||'&#8212;'}</td>
+      <td><div class="action-btns">
+        <button class="btn btn-outline btn-xs" onclick="openDebitNoteModal(${dn.id})">&#9999;&#65039; Edit</button>
+        <button class="btn btn-danger btn-xs" onclick="deleteDebitNote(${dn.id})">&#128465;</button>
+      </div></td>
+    </tr>`;
+  }).join('');
+}
+
+function exportDebitNotes() {
+  const list = (DB.debitNotes||[]).sort((a,b) => new Date(a.date) - new Date(b.date));
+  if (!list.length) return toast('No debit notes to export.', 'error');
+  const data = list.map(dn => {
+    const d   = (DB.dealers||[]).find(d => d.id === dn.dealerId);
+    const pur = (DB.purchases||[]).find(p => p.id === dn.purchaseId);
+    return { 'DN No *': dn.dnNumber, 'Dealer *': d?.name||'', 'Bill No': pur?.billNo||'', 'Date *': fmtDateExport(dn.date), 'Amount *': parseFloat(dn.amount), 'Reason *': dn.reason, 'Notes': dn.notes||'' };
+  });
+  exportStyledXLSX(data, 'DebitNotes_MauliEnt', 'Debit Notes');
 }
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
